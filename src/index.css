@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand: #ffcf0f;
+  --color-brand-foreground: #121a2a;
+  --color-crimson: #c8102e;
+  --color-crimson-deep: #8b0a1a;
+  --color-navy: #0a1628;
+  --color-navy-light: #1e2a3f;
+  --color-sunset: #ff9f1c;
+
+  --color-background: #faf8f4;
+  --color-foreground: #121a2a;
+  --color-card: #ffffff;
+  --color-card-foreground: #121a2a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #121a2a;
+  --color-primary: #ffcf0f;
+  --color-primary-foreground: #121a2a;
+  --color-secondary: #eef0f4;
+  --color-secondary-foreground: #1e2a3f;
+  --color-muted: #eef0f4;
+  --color-muted-foreground: #5c6578;
+  --color-accent: #c8102e;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #c8102e;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e2e6ed;
+  --color-input: #e8ebf0;
+  --color-ring: #ffcf0f;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+.dark {
+  --color-background: #0c1018;
+  --color-foreground: #f4f6fa;
+  --color-card: #161d2b;
+  --color-card-foreground: #f4f6fa;
+  --color-popover: #161d2b;
+  --color-popover-foreground: #f4f6fa;
+  --color-primary: #ffcf0f;
+  --color-primary-foreground: #121a2a;
+  --color-secondary: #1e2a3f;
+  --color-secondary-foreground: #f4f6fa;
+  --color-muted: #1e2a3f;
+  --color-muted-foreground: #9aa3b5;
+  --color-accent: #e8233f;
+  --color-accent-foreground: #ffffff;
+  --color-border: #2a3548;
+  --color-input: #243044;
+  --color-ring: #ffcf0f;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 45% at 0% 0%, #c8102e08, transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, #ffcf0f0a, transparent 55%);
+  }
+
+  .dark body::before {
+    background:
+      radial-gradient(ellipse 70% 45% at 0% 0%, #c8102e12, transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, #ffcf0f08, transparent 55%);
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/95 border border-border shadow-sm;
+  }
+
+  .glass-strong {
+    @apply bg-card/95 border border-border shadow-md;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-[#ffcf0f] via-[#ff9f1c] to-[#c8102e] bg-clip-text text-transparent;
+  }
+
+  .bg-brand-gradient {
+    background: linear-gradient(135deg, #ffcf0f 0%, #ff9f1c 100%);
+  }
+
+  .bg-crimson-gradient {
+    background: linear-gradient(145deg, #0a1628 0%, #1a0a14 35%, #8b0a1a 70%, #c8102e 100%);
+  }
+
+  .bg-auth-panel {
+    background: linear-gradient(180deg, #faf8f4 0%, #f5f0ea 100%);
+  }
+
+  .auth-gold-bar {
+    @apply h-1 w-12 rounded-full bg-gradient-to-r from-[#ffcf0f] to-[#ff9f1c];
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.35s ease-out both;
+  }
+
+  .animate-fade-in-delay-1 {
+    animation: fade-in 0.35s ease-out 0.05s both;
+  }
+
+  .content-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 200px;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

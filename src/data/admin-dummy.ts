@@ -276,3 +276,59 @@ export const vehicleSalesByModel = [
   { model: 'Hilux', sold: 38, available: 4 },
   { model: 'Land Cruiser', sold: 12, available: 3 },
 ]
+
+export const customerGrowthChart = [
+  { month: 'Jan', customers: 1820, churned: 42 },
+  { month: 'Feb', customers: 1980, churned: 38 },
+  { month: 'Mar', customers: 2240, churned: 51 },
+  { month: 'Apr', customers: 2510, churned: 44 },
+  { month: 'May', customers: 2890, churned: 36 },
+  { month: 'Jun', customers: 3210, churned: 29 },
+]
+
+export const acquisitionChannels = [
+  { channel: 'Website', value: 38, color: '#6366f1' },
+  { channel: 'Showroom', value: 24, color: '#10b981' },
+  { channel: 'Referral', value: 18, color: '#f59e0b' },
+  { channel: 'Social', value: 12, color: '#ec4899' },
+  { channel: 'Trade-In', value: 8, color: '#0ea5e9' },
+]
+
+export const branchPerformance = [
+  { branch: 'Ikeja', revenue: 312, target: 300, units: 42, satisfaction: 4.7 },
+  { branch: 'Victoria Island', revenue: 268, target: 280, units: 34, satisfaction: 4.8 },
+  { branch: 'Abuja', revenue: 198, target: 180, units: 26, satisfaction: 4.6 },
+  { branch: 'Port Harcourt', revenue: 114, target: 140, units: 18, satisfaction: 4.4 },
+]
+
+export const serviceOpsByType = [
+  { type: 'Periodic', count: 142, color: '#10b981' },
+  { type: 'Repair', count: 88, color: '#f59e0b' },
+  { type: 'Inspection', count: 64, color: '#6366f1' },
+  { type: 'Recall', count: 21, color: '#ef4444' },
+]
+
+export const weeklyServiceLoad = [
+  { day: 'Mon', booked: 38, completed: 35 },
+  { day: 'Tue', booked: 42, completed: 39 },
+  { day: 'Wed', booked: 48, completed: 44 },
+  { day: 'Thu', booked: 40, completed: 38 },
+  { day: 'Fri', booked: 52, completed: 47 },
+  { day: 'Sat', booked: 58, completed: 51 },
+  { day: 'Sun', booked: 18, completed: 16 },
+]
+
+export const revenueTarget = {
+  achieved: 892.5,
+  target: 1050,
+  lastMonth: 794,
+}
+
+export const activityFeed = [
+  { id: 'af-1', type: 'sale', text: 'Ngozi Eze purchased a Land Cruiser VX', meta: '₦127.5M · VI branch', time: '12m ago', color: 'emerald' },
+  { id: 'af-2', type: 'lead', text: 'New lead assigned to Sarah Adeyemi', meta: 'Camry XSE · Website', time: '34m ago', color: 'violet' },
+  { id: 'af-3', type: 'service', text: 'Service completed for Adaeze Okonkwo', meta: 'Corolla · Bay 1 · Ikeja', time: '1h ago', color: 'sky' },
+  { id: 'af-4', type: 'warranty', text: 'Warranty claim approved', meta: 'RAV4 · ₦340K parts', time: '2h ago', color: 'amber' },
+  { id: 'af-5', type: 'ticket', text: 'SLA breach flagged on ticket #TK-2041', meta: 'Billing · escalated', time: '3h ago', color: 'rose' },
+  { id: 'af-6', type: 'staff', text: 'Goodness Obi added to Service team', meta: 'Staff onboarding', time: '5h ago', color: 'violet' },
+]

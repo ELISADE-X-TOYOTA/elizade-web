@@ -12,6 +12,7 @@ export interface StaffMember {
   isActive: boolean
   isVerified: boolean
   createdAt: string
+  updatedAt?: string | null
 }
 
 export interface StaffCreateBody {
@@ -51,5 +52,11 @@ export function updateStaff(
   return apiFetch<StaffMember>(`/admin/staff/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
+  })
+}
+
+export function sendStaffLoginOtp(id: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/admin/staff/${id}/send-otp`, {
+    method: 'POST',
   })
 }

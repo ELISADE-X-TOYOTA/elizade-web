@@ -35,10 +35,10 @@ const AdminDashboardPage = lazy(() =>
   import('@/pages/admin/AdminDashboard').then((m) => ({ default: m.AdminDashboardPage })),
 )
 const AdminInventoryPage = lazy(() =>
-  import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminInventoryPage })),
+  import('@/pages/admin/AdminInventoryPage').then((m) => ({ default: m.AdminInventoryPage })),
 )
 const AdminCustomersPage = lazy(() =>
-  import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminCustomersPage })),
+  import('@/pages/admin/AdminCustomersPage').then((m) => ({ default: m.AdminCustomersPage })),
 )
 const AdminLeadsPage = lazy(() =>
   import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminLeadsPage })),

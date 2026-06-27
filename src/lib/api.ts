@@ -50,3 +50,25 @@ export async function apiFetch<T>(
   if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const headers = new Headers()
+  const token = getAccessToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', body: formData, headers })
+
+  if (!res.ok) {
+    let message = res.statusText
+    try {
+      const data = await res.json()
+      if (typeof data.detail === 'string') message = data.detail
+      else if (Array.isArray(data.detail)) message = data.detail[0]?.msg ?? message
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(message, res.status)
+  }
+
+  return res.json() as Promise<T>
+}

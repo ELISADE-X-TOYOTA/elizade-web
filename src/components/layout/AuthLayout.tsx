@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, ShieldCheck } from 'lucide-react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { AuthBrandPanel } from '@/components/layout/AuthBrandPanel'
 import { BrandMark } from '@/components/branding/BrandMark'
@@ -36,21 +36,26 @@ export function AuthLayout({ children, title, subtitle, mode = 'login' }: AuthLa
         <main className="flex-1 flex items-center justify-center px-5 sm:px-8 py-8 sm:py-12">
           <div className="w-full max-w-[400px] animate-fade-in">
             <div className="mb-7">
-              <h1 className="font-display text-2xl sm:text-[1.75rem] font-bold tracking-tight">{title}</h1>
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                {mode === 'register' ? 'Get started' : 'Secure sign-in'}
+              </span>
+              <h1 className="font-display text-2xl sm:text-[1.75rem] font-bold tracking-tight mt-3">{title}</h1>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">{subtitle}</p>
             </div>
 
             {children}
 
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                OTP-secured
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                No password needed
-              </span>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+              {['OTP-secured', 'No password', 'Bank-grade encryption'].map((label) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/60 px-3 py-1 text-[11px] font-medium text-muted-foreground"
+                >
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
         </main>

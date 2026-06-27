@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Plus, Search, Upload, Send, Calendar, Filter } from 'lucide-react'
+import { Plus, Send, Calendar } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -15,28 +15,22 @@ import {
 import { PageHeader, StatCard } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { VehicleThumb } from '@/components/ui/safe-image'
 import {
-  inventoryList,
-  adminCustomers,
   adminLeads,
   serviceScheduleToday,
   adminWarrantyQueue,
   adminSupportQueue,
   notificationRules,
   broadcastCampaigns,
-  customerSegments,
   slaConfigs,
   recallAdminList,
   vehicleSalesByModel,
   revenueChart,
   adminKpis,
 } from '@/data/admin-dummy'
-import { getBranchById } from '@/data/dummy'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import type { LeadStatus } from '@/types'
 
 const leadStatusColor: Record<LeadStatus, 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'destructive'> = {
@@ -47,121 +41,6 @@ const leadStatusColor: Record<LeadStatus, 'default' | 'secondary' | 'outline' | 
   negotiation: 'warning',
   won: 'success',
   lost: 'destructive',
-}
-
-export function AdminInventoryPage() {
-  const [search, setSearch] = useState('')
-
-  const filtered = inventoryList.filter((v) =>
-    v.title.toLowerCase().includes(search.toLowerCase()),
-  )
-
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Inventory Management" description="Publish, price, and manage vehicle listings">
-        <Button className="gap-2" onClick={() => toast.success('Upload form opened (demo)')}>
-          <Plus className="h-4 w-4" /> Add Vehicle
-        </Button>
-      </PageHeader>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search VIN, model..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-        </div>
-        <Button variant="outline" className="gap-2"><Filter className="h-4 w-4" /> Filters</Button>
-      </div>
-
-      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map((v) => (
-          <Card key={v.id} className="overflow-hidden group hover:shadow-xl transition-all">
-            <div className="aspect-[16/10] overflow-hidden">
-              <VehicleThumb src={v.image} alt={v.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" />
-            </div>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex justify-between items-start gap-2">
-                <div>
-                  <p className="font-semibold">{v.title}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{v.vin}</p>
-                </div>
-                <Badge variant={v.status === 'available' ? 'success' : v.status === 'reserved' ? 'warning' : 'secondary'}>
-                  {v.status}
-                </Badge>
-              </div>
-              <p className="font-display text-lg font-bold">{formatCurrency(v.price)}</p>
-              <p className="text-xs text-muted-foreground">{getBranchById(v.branch)?.name} · {v.color}</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => toast.info('Edit listing (demo)')}>Edit</Button>
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => toast.success('Status updated')}>Availability</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export function AdminCustomersPage() {
-  const [search, setSearch] = useState('')
-
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Customer CRM" description="Profiles, segments, and ownership history">
-        <Button variant="outline" className="gap-2"><Upload className="h-4 w-4" /> Export</Button>
-      </PageHeader>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        {customerSegments.map((seg) => (
-          <Card key={seg.id} className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground">{seg.name}</p>
-              <p className="font-display text-2xl font-bold mt-1">{seg.count.toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">{seg.criteria}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="pb-3 pr-4">Customer</th>
-                <th className="pb-3 pr-4">Vehicles</th>
-                <th className="pb-3 pr-4">Segment</th>
-                <th className="pb-3 pr-4">Total Spend</th>
-                <th className="pb-3">Last Active</th>
-              </tr>
-            </thead>
-            <tbody>
-              {adminCustomers
-                .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
-                .map((c) => (
-                  <tr key={c.id} className="border-b border-border/50 hover:bg-muted/30">
-                    <td className="py-3 pr-4">
-                      <p className="font-medium">{c.name}</p>
-                      <p className="text-xs text-muted-foreground">{c.email}</p>
-                    </td>
-                    <td className="py-3 pr-4 text-xs">{c.vehicles.join(', ')}</td>
-                    <td className="py-3 pr-4"><Badge variant="outline">{c.segment}</Badge></td>
-                    <td className="py-3 pr-4 font-semibold">{formatCurrency(c.totalSpend)}</td>
-                    <td className="py-3 text-xs text-muted-foreground">{formatDateTime(c.lastActive)}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-    </div>
-  )
 }
 
 export function AdminLeadsPage() {

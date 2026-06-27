@@ -43,13 +43,13 @@ export function Drawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       <button
         type="button"
-        className="absolute inset-0 bg-black/45 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-black/50 animate-drawer-overlay"
         onClick={onClose}
         aria-label="Close drawer"
       />
       <div
         className={cn(
-          'relative flex h-full w-full flex-col bg-card border-l border-border shadow-2xl animate-fade-in',
+          'relative flex h-full w-full flex-col bg-card border-l border-border shadow-2xl animate-drawer-in',
           width === 'xl' ? 'max-w-xl' : width === 'lg' ? 'max-w-lg' : 'max-w-md',
         )}
       >

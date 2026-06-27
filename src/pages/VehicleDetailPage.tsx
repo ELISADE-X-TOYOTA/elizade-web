@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -13,6 +13,7 @@ import {
   Calculator,
   ChevronLeft,
   ChevronRight,
+  Loader2,
   Rotate3d,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -21,25 +22,59 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FadeIn } from '@/components/effects/PageTransition'
 import { SafeImage } from '@/components/ui/safe-image'
-import { getVehicleById, getBranchById } from '@/data/dummy'
+import { getPublicVehicle } from '@/lib/inventory-api'
+import { mapDetailToVehicle } from '@/lib/vehicle-mappers'
 import { formatCurrency } from '@/lib/utils'
+import type { Vehicle } from '@/types'
 
 export function VehicleDetailPage() {
   const { id } = useParams()
-  const vehicle = getVehicleById(id || '')
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [imageIndex, setImageIndex] = useState(0)
   const [show360, setShow360] = useState(false)
 
-  if (!vehicle) {
+  useEffect(() => {
+    if (!id) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    getPublicVehicle(id)
+      .then((detail) => {
+        if (!cancelled) {
+          setVehicle(mapDetailToVehicle(detail))
+          setImageIndex(0)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Vehicle not found')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error || !vehicle) {
     return (
       <div className="text-center py-20">
-        <p className="text-muted-foreground">Vehicle not found</p>
+        <p className="text-muted-foreground">{error ?? 'Vehicle not found'}</p>
         <Link to="/vehicles"><Button className="mt-4">Back to catalogue</Button></Link>
       </div>
     )
   }
 
-  const branch = getBranchById(vehicle.branchId)
   const salesActions = [
     { to: `/sales/test-drive?vehicle=${vehicle.id}`, label: 'Book Test Drive', icon: Calendar },
     { to: `/sales/quote?vehicle=${vehicle.id}`, label: 'Get Quotation', icon: FileText },
@@ -47,6 +82,8 @@ export function VehicleDetailPage() {
     { to: `/sales/trade-in`, label: 'Trade-In', icon: ArrowLeftRight },
     { to: `/sales/financing?vehicle=${vehicle.id}`, label: 'Financing', icon: Calculator },
   ]
+
+  const gallery = vehicle.images.length > 0 ? vehicle.images : ['']
 
   return (
     <div className="space-y-6">
@@ -58,14 +95,13 @@ export function VehicleDetailPage() {
       </Link>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* Gallery */}
         <FadeIn>
           <div className="space-y-4">
             <div className="relative aspect-[16/10] rounded-2xl overflow-hidden glass">
               <AnimatePresence mode="wait">
                 <motion.div key={imageIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full w-full">
                   <SafeImage
-                    src={vehicle.images[imageIndex]}
+                    src={gallery[imageIndex]}
                     alt=""
                     className="h-full w-full object-cover"
                   />
@@ -83,13 +119,13 @@ export function VehicleDetailPage() {
                 <Rotate3d className="h-4 w-4" />
                 {show360 ? 'Photos' : '360° View'}
               </Button>
-              {vehicle.images.length > 1 && (
+              {gallery.length > 1 && (
                 <>
                   <Button
                     size="icon"
                     variant="glass"
                     className="absolute left-3 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setImageIndex((i) => (i - 1 + vehicle.images.length) % vehicle.images.length)}
+                    onClick={() => setImageIndex((i) => (i - 1 + gallery.length) % gallery.length)}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -97,15 +133,16 @@ export function VehicleDetailPage() {
                     size="icon"
                     variant="glass"
                     className="absolute right-3 top-1/2 -translate-y-1/2 h-8 w-8"
-                    onClick={() => setImageIndex((i) => (i + 1) % vehicle.images.length)}
+                    onClick={() => setImageIndex((i) => (i + 1) % gallery.length)}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </>
               )}
             </div>
-            <div className="flex gap-2">
-              {vehicle.images.map((img, i) => (
+            {gallery.length > 1 && (
+              <div className="flex gap-2">
+                {gallery.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setImageIndex(i)}
@@ -115,12 +152,12 @@ export function VehicleDetailPage() {
                   >
                     <SafeImage src={img} alt="" className="h-full w-full object-cover" />
                   </button>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </FadeIn>
 
-        {/* Details */}
         <FadeIn delay={0.1}>
           <div className="space-y-6">
             <div>
@@ -155,7 +192,7 @@ export function VehicleDetailPage() {
               {[
                 { icon: Fuel, label: vehicle.fuelType },
                 { icon: Cog, label: vehicle.transmission },
-                { icon: MapPin, label: branch?.city || 'Lagos' },
+                { icon: MapPin, label: vehicle.branchCity ?? 'Lagos' },
               ].map((item) => (
                 <Card key={item.label}>
                   <CardContent className="flex flex-col items-center gap-1 p-3 text-center">
@@ -180,7 +217,6 @@ export function VehicleDetailPage() {
         </FadeIn>
       </div>
 
-      {/* Specs tabs */}
       <FadeIn delay={0.2}>
         <Tabs defaultValue="specs">
           <TabsList>
@@ -208,20 +244,19 @@ export function VehicleDetailPage() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Engine</span><span className="font-medium">{vehicle.engine}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Transmission</span><span className="font-medium">{vehicle.transmission}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Fuel Type</span><span className="font-medium">{vehicle.fuelType}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">VIN</span><span className="font-mono text-sm">{vehicle.vin}</span></div>
+                {vehicle.vin && (
+                  <div className="flex justify-between"><span className="text-muted-foreground">VIN</span><span className="font-mono text-sm">{vehicle.vin}</span></div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="location">
             <Card>
               <CardContent className="p-6">
-                {branch && (
-                  <div className="space-y-2">
-                    <p className="font-semibold">{branch.name}</p>
-                    <p className="text-muted-foreground">{branch.address}</p>
-                    <p className="text-muted-foreground">{branch.city}, {branch.state}</p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <p className="font-semibold">{vehicle.branchName ?? 'Elizade showroom'}</p>
+                  <p className="text-muted-foreground">{vehicle.branchCity}, {vehicle.branchState}</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

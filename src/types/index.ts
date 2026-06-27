@@ -31,6 +31,10 @@ export interface Vehicle {
   engine: string
   availability: AvailabilityStatus
   branchId: string
+  branchName?: string
+  branchCity?: string
+  branchState?: string
+  branchAddress?: string
   images: string[]
   specs: Record<string, string>
   mileage?: number

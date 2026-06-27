@@ -20,6 +20,7 @@ interface AuthContextType {
   login: (payload: OtpRequestBody) => Promise<void>
   logout: () => void
   completeOtp: (phone: string, code: string) => Promise<UserProfile>
+  resetOtp: () => void
   pendingOtp: boolean
   pendingPhone: string
 }
@@ -69,6 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data.user
   }
 
+  const resetOtp = () => {
+    setPendingOtp(false)
+    setPendingPhone('')
+  }
+
   const logout = () => {
     logoutApi()
     setIsAuthenticated(false)
@@ -93,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         completeOtp,
+        resetOtp,
         pendingOtp,
         pendingPhone,
       }}

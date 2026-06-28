@@ -47,6 +47,9 @@ export const vehicleImageSets: Record<string, string[]> = {
 
 export const PLACEHOLDER_VEHICLE = '/images/vehicle-placeholder.svg'
 
+/** Login/register sidebar hero — separate from inventory catalogue URLs. */
+export const AUTH_HERO_IMAGE = 'https://picsum.photos/seed/toyota-camry-1/1200/800'
+
 export function avatarUrl(name: string, bg = 'EB0A1E'): string {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bg}&color=fff&size=256&bold=true&format=svg`
 }

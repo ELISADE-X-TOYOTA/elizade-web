@@ -1,6 +1,6 @@
 import { Star } from 'lucide-react'
 import { SafeImage, AvatarImage } from '@/components/ui/safe-image'
-import { getVehicleImages } from '@/lib/images'
+import { AUTH_HERO_IMAGE } from '@/lib/images'
 import { cn } from '@/lib/utils'
 
 export interface AuthTestimonial {
@@ -72,7 +72,7 @@ export function AuthBrandPanel({
   mode?: 'login' | 'register'
   testimonials?: AuthTestimonial[]
 }) {
-  const heroImage = getVehicleImages('camry')[0]
+  const heroImage = AUTH_HERO_IMAGE
   const [primary, secondary] = testimonials
 
   return (

@@ -13,16 +13,18 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronLeft,
+  HelpCircle,
+  Settings,
+  Sparkles,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { BrandMark } from '@/components/branding/BrandMark'
 import { AvatarImage } from '@/components/ui/safe-image'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { AdminGlobalSearch } from '@/components/admin/AdminGlobalSearch'
 
 const baseNavItems = [
   { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -38,37 +40,65 @@ const baseNavItems = [
 
 const adminOnlyNavItems = [{ to: '/admin/staff', label: 'Staff', icon: UserCog }]
 
+const PAGE_TITLES: Record<string, string> = {
+  '/admin/dashboard': 'Operations overview',
+  '/admin/inventory': 'Vehicle inventory',
+  '/admin/customers': 'Customer CRM',
+  '/admin/leads': 'Lead pipeline',
+  '/admin/service': 'Service operations',
+  '/admin/warranty': 'Warranty & recalls',
+  '/admin/support': 'Support inbox',
+  '/admin/notifications': 'Notifications',
+  '/admin/analytics': 'Business intelligence',
+  '/admin/staff': 'Team management',
+}
+
+function pageTitle(pathname: string) {
+  const match = Object.entries(PAGE_TITLES).find(([path]) => pathname === path || pathname.startsWith(`${path}/`))
+  return match?.[1] ?? 'Admin portal'
+}
+
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const { user, logout, isAdmin } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const fullName = `${user?.firstName} ${user?.lastName}`
+
+  const fullName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()
   const navItems = isAdmin ? [...baseNavItems, ...adminOnlyNavItems] : baseNavItems
-  const portalLabel = isAdmin ? 'Admin Portal' : 'Staff Portal'
+  const portalLabel = isAdmin ? 'Admin portal' : 'Staff portal'
+  const subtitle = useMemo(() => pageTitle(location.pathname), [location.pathname])
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-[#eef1f6] dark:bg-[#0c1018]">
+      {/* Desktop sidebar shell — rounded navy panel like reference */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-72 flex flex-col border-r border-border/50 glass-strong transition-transform lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 flex w-[17.5rem] flex-col transition-transform lg:translate-x-0',
+          'lg:top-3 lg:bottom-3 lg:left-3 lg:rounded-[1.35rem]',
+          'bg-[#0a1628] text-white shadow-2xl shadow-black/20',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-16 items-center gap-3 px-5 border-b border-border/50">
-          <BrandMark size="md" />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">Elizade Connect</p>
-            <Badge variant="secondary" className="text-[10px] mt-0.5">{portalLabel}</Badge>
+        <div className="flex h-[4.25rem] items-center gap-3 border-b border-white/10 px-5">
+          <BrandMark size="md" className="brightness-110" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-[15px] font-bold tracking-tight">Elizade Connect</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45">{portalLabel}</p>
           </div>
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(false)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
+            onClick={() => setMobileOpen(false)}
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">Menu</p>
           {navItems.map((item) => {
-            const active = location.pathname === item.to || location.pathname.startsWith(item.to + '/')
+            const active = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
             const Icon = item.icon
             return (
               <Link
@@ -76,29 +106,61 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
+                  'group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[13px] font-medium transition-all',
                   active
-                    ? 'bg-secondary text-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                    ? 'bg-[#ffcf0f] text-[#121a2a] shadow-lg shadow-[#ffcf0f]/20'
+                    : 'text-white/65 hover:bg-white/8 hover:text-white',
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
+                <span
+                  className={cn(
+                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors',
+                    active ? 'bg-[#121a2a]/10' : 'bg-white/6 group-hover:bg-white/10',
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
                 {item.label}
               </Link>
             )
           })}
         </nav>
 
-        <div className="border-t border-border/50 p-3 space-y-2">
-          <div className="flex items-center gap-3 rounded-xl p-3 bg-muted/30">
-            <AvatarImage src={user?.avatar} name={fullName} className="h-10 w-10 ring-2 ring-primary/20" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{fullName}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{user?.role} · {user?.department}</p>
+        {/* Bottom promo card — reference-style utility block */}
+        <div className="px-3 pb-3">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1e2a3f] to-[#121a2a] p-4">
+            <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-[#ffcf0f]/10 blur-2xl" />
+            <div className="relative flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#ffcf0f]/15 text-[#ffcf0f]">
+                <Sparkles className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Dealership ops hub</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-white/55">
+                  Inventory, CRM, service, and support in one workspace.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2 border-t border-white/10 p-3">
+          <div className="flex items-center gap-3 rounded-2xl bg-white/6 p-3">
+            <AvatarImage src={user?.avatar} name={fullName} className="h-10 w-10 ring-2 ring-[#ffcf0f]/30" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{fullName || 'User'}</p>
+              <p className="truncate text-[10px] uppercase tracking-wide text-white/45">
+                {user?.role} · {user?.department ?? 'Operations'}
+              </p>
             </div>
             <ThemeToggle />
           </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={logout}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 rounded-xl text-white/60 hover:bg-white/8 hover:text-white"
+            onClick={logout}
+          >
             <LogOut className="h-4 w-4" />
             Sign out
           </Button>
@@ -106,29 +168,58 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <div className="flex-1 lg:pl-72 flex flex-col min-h-screen">
-        {/* Top bar mobile */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 glass-strong px-4 lg:px-8">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate hidden sm:block">
-              Welcome back, <span className="font-semibold">{user?.firstName}</span>
-            </p>
+      {/* Main column */}
+      <div className="flex min-h-screen flex-col lg:pl-[calc(17.5rem+0.75rem)]">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-white/85 px-4 py-3 backdrop-blur-xl dark:bg-[#121a2a]/90 sm:px-6 lg:px-8 lg:py-4">
+          <div className="mx-auto flex max-w-[1600px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 lg:hidden"
+                onClick={() => setMobileOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div className="min-w-0">
+                <p className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">{subtitle}</p>
+                <p className="hidden text-xs text-muted-foreground sm:block">
+                  Welcome back, <span className="font-medium text-foreground">{user?.firstName}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <AdminGlobalSearch isAdmin={isAdmin} />
+
+              <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+                <Button variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex">
+                  <HelpCircle className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="relative rounded-full">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#c8102e]" />
+                </Button>
+                <Button variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex">
+                  <Settings className="h-4 w-4" />
+                </Button>
+
+                <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-card py-1 pl-1 pr-3 shadow-sm sm:flex">
+                  <AvatarImage src={user?.avatar} name={fullName} className="h-8 w-8" />
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold">{fullName || 'User'}</p>
+                    <p className="truncate text-[10px] capitalize text-muted-foreground">{user?.role}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <Link to="/dashboard">
-            <Button variant="outline" size="sm" className="gap-1 text-xs">
-              <ChevronLeft className="h-3 w-3" />
-              Customer view
-            </Button>
-          </Link>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
           <div className="mx-auto max-w-[1600px]">{children}</div>
         </main>
       </div>

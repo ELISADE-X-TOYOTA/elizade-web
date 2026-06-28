@@ -10,7 +10,7 @@ interface DrawerProps {
   description?: string
   children: React.ReactNode
   footer?: React.ReactNode
-  width?: 'md' | 'lg' | 'xl'
+  width?: 'md' | 'lg' | 'xl' | '2xl'
   customHeader?: React.ReactNode
 }
 
@@ -50,7 +50,7 @@ export function Drawer({
       <div
         className={cn(
           'relative flex h-full w-full flex-col bg-card border-l border-border shadow-2xl animate-drawer-in',
-          width === 'xl' ? 'max-w-xl' : width === 'lg' ? 'max-w-lg' : 'max-w-md',
+          width === '2xl' ? 'max-w-3xl' : width === 'xl' ? 'max-w-xl' : width === 'lg' ? 'max-w-lg' : 'max-w-md',
         )}
       >
         {customHeader ? (

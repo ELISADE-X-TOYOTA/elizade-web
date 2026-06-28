@@ -5,6 +5,13 @@ import type { VehicleDetail, VehicleListItem } from '@/lib/inventory-api'
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url) return ''
   if (url.startsWith('http') || url.startsWith('/images')) return url
+  if (url.startsWith('/media')) {
+    const apiUrl = import.meta.env.VITE_API_URL ?? '/api/v1'
+    if (apiUrl.startsWith('http')) {
+      return `${apiUrl.replace(/\/api\/v1\/?$/, '')}${url}`
+    }
+    return url
+  }
   return url
 }
 

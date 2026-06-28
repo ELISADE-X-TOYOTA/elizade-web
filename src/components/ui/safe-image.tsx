@@ -60,12 +60,22 @@ export function AvatarImage({
   )
 }
 
-export function VehicleThumb({ src, alt, className }: { src: string; alt: string; className?: string }) {
+export function VehicleThumb({
+  src,
+  alt,
+  className,
+  fit = 'cover',
+}: {
+  src: string
+  alt: string
+  className?: string
+  fit?: 'cover' | 'contain'
+}) {
   const [error, setError] = useState(false)
 
   if (error || !src) {
     return (
-      <div className={cn('flex items-center justify-center bg-muted', className)}>
+      <div className={cn('flex h-full w-full items-center justify-center bg-muted', className)}>
         <Car className="h-8 w-8 text-muted-foreground/40" />
       </div>
     )
@@ -75,7 +85,11 @@ export function VehicleThumb({ src, alt, className }: { src: string; alt: string
     <img
       src={src}
       alt={alt}
-      className={className}
+      className={cn(
+        'block h-full w-full',
+        fit === 'cover' ? 'object-cover object-center' : 'object-contain object-center',
+        className,
+      )}
       onError={() => setError(true)}
       loading="lazy"
     />

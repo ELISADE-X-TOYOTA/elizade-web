@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import {
   AreaChart,
   Area,
@@ -53,6 +55,9 @@ import {
 } from '@/data/admin-dummy'
 import { cn, formatCurrency } from '@/lib/utils'
 import { AvatarImage } from '@/components/ui/safe-image'
+import { ApiError } from '@/lib/api'
+import { getDashboardSummary, type DashboardSummary } from '@/lib/dashboard-api'
+import { useAuth } from '@/context/AuthContext'
 
 const tooltipStyle = {
   borderRadius: 12,
@@ -140,6 +145,8 @@ const serviceTotal = serviceOpsByType.reduce((s, x) => s + x.count, 0)
 const revenuePct = Math.round((revenueTarget.achieved / revenueTarget.target) * 100)
 
 export function AdminDashboardPage() {
+  const { user } = useAuth()
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const slaAtRisk = adminSupportQueue.filter((t) => t.slaStatus === 'at_risk')
   const now = new Date()
   const greeting =
@@ -150,6 +157,25 @@ export function AdminDashboardPage() {
     month: 'long',
     year: 'numeric',
   })
+
+  useEffect(() => {
+    getDashboardSummary()
+      .then(setSummary)
+      .catch((err) => {
+        toast.error(err instanceof ApiError ? err.message : 'Failed to load dashboard summary')
+      })
+  }, [])
+
+  const activeLeads = summary?.leadsActive ?? adminKpis.activeLeads
+  const serviceToday = summary?.serviceToday ?? adminKpis.serviceToday
+  const serviceCapacity = summary?.serviceCapacity ?? adminKpis.serviceCapacity
+  const openTickets = summary?.openSupportTickets ?? adminKpis.openTickets
+  const slaAtRiskCount = summary?.slaAtRiskTickets ?? adminKpis.slaAtRisk
+  const inventoryAvailable = summary?.vehiclesAvailable ?? adminKpis.inventoryAvailable
+  const newCustomers = summary?.customersNew30d ?? adminKpis.newCustomersMonth
+  const pendingClaims = summary?.pendingWarrantyClaims ?? 0
+  const servicePct =
+    serviceCapacity > 0 ? Math.round((serviceToday / serviceCapacity) * 100) : 0
 
   return (
     <PageContainer wide className="space-y-6 sm:space-y-8">
@@ -163,7 +189,7 @@ export function AdminDashboardPage() {
               <span>Dashboard</span>
             </nav>
             <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">
-              {greeting}, Divine
+              {greeting}{user?.firstName ? `, ${user.firstName}` : ''}
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
               Elizade Connect overview · {dateStr}
@@ -186,44 +212,44 @@ export function AdminDashboardPage() {
         </div>
       </FadeIn>
 
-      {/* KPI row */}
+      {/* KPI row — live counts from API where available */}
       <FadeIn delay={0.05}>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard
-            label="Revenue (Jun)"
-            value={formatCurrency(adminKpis.totalRevenue)}
-            sub="Sales + service combined"
-            icon={TrendingUp}
+            label="Inventory available"
+            value={inventoryAvailable}
+            sub={`${summary?.vehiclesTotal ?? adminKpis.inventoryAvailable + adminKpis.inventoryReserved} units in catalogue`}
+            icon={Car}
             accent="violet"
-            trend={`${adminKpis.revenueGrowth}% vs last month`}
+            trend={`${summary?.vehiclesReserved ?? adminKpis.inventoryReserved} reserved`}
             trendPositive
           />
           <MetricCard
             label="Active leads"
-            value={adminKpis.activeLeads}
-            sub={`${leadTotal} in pipeline`}
+            value={activeLeads}
+            sub={`${leadTotal} in pipeline (demo chart)`}
             icon={Target}
             accent="emerald"
-            trend={`${adminKpis.leadsGrowth}% growth`}
+            trend={summary?.leadsActive != null ? 'Live from CRM' : `${adminKpis.leadsGrowth}% growth (demo)`}
             trendPositive
           />
           <MetricCard
             label="Service today"
-            value={`${adminKpis.serviceToday}/${adminKpis.serviceCapacity}`}
+            value={serviceToday != null && serviceCapacity != null ? `${serviceToday}/${serviceCapacity}` : '—'}
             sub="Bay appointments booked"
             icon={Wrench}
             accent="sky"
-            trend={`${Math.round((adminKpis.serviceToday / adminKpis.serviceCapacity) * 100)}% capacity`}
-            trendPositive={adminKpis.serviceToday < adminKpis.serviceCapacity}
+            trend={serviceCapacity ? `${servicePct}% capacity` : 'Service module pending'}
+            trendPositive={serviceToday < serviceCapacity}
           />
           <MetricCard
             label="Open tickets"
-            value={adminKpis.openTickets}
-            sub={`${adminKpis.slaAtRisk} at SLA risk`}
+            value={openTickets}
+            sub={`${slaAtRiskCount} at SLA risk · ${pendingClaims} warranty claims`}
             icon={HeadphonesIcon}
             accent="rose"
-            trend={`${adminKpis.slaAtRisk} need attention`}
-            trendPositive={false}
+            trend={`${slaAtRiskCount} need attention`}
+            trendPositive={slaAtRiskCount === 0}
           />
         </div>
       </FadeIn>
@@ -377,7 +403,7 @@ export function AdminDashboardPage() {
                   <UserPlus className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold tabular-nums">{adminKpis.newCustomersMonth}</p>
+                  <p className="text-2xl font-bold tabular-nums">{newCustomers}</p>
                   <p className="text-xs text-muted-foreground">new this month</p>
                 </div>
                 <TrendBadge value={`${adminKpis.customerGrowth}%`} positive />
@@ -752,9 +778,9 @@ export function AdminDashboardPage() {
       <FadeIn delay={0.1}>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { to: '/admin/inventory', label: 'Inventory', icon: Car, desc: `${adminKpis.inventoryAvailable} units available`, accent: 'bg-violet-500/15 text-violet-600' },
-            { to: '/admin/customers', label: 'CRM', icon: Users, desc: `${adminKpis.newCustomersMonth} new this month`, accent: 'bg-emerald-500/15 text-emerald-600' },
-            { to: '/admin/warranty', label: 'Warranty', icon: AlertTriangle, desc: '2 claims pending', accent: 'bg-amber-500/15 text-amber-600' },
+            { to: '/admin/inventory', label: 'Inventory', icon: Car, desc: `${inventoryAvailable} units available`, accent: 'bg-violet-500/15 text-violet-600' },
+            { to: '/admin/customers', label: 'CRM', icon: Users, desc: `${newCustomers} new in 30 days`, accent: 'bg-emerald-500/15 text-emerald-600' },
+            { to: '/admin/warranty', label: 'Warranty', icon: AlertTriangle, desc: `${pendingClaims} claims pending`, accent: 'bg-amber-500/15 text-amber-600' },
             { to: '/admin/staff', label: 'Staff', icon: Users, desc: 'Team directory', accent: 'bg-sky-500/15 text-sky-600' },
           ].map((item) => (
             <Link key={item.to} to={item.to}>

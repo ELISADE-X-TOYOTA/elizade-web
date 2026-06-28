@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Plus, Send, Calendar } from 'lucide-react'
+import { Plus, Calendar, Loader2 } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -9,27 +9,17 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
 } from 'recharts'
 import { PageHeader, StatCard } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   adminLeads,
   serviceScheduleToday,
-  adminWarrantyQueue,
-  adminSupportQueue,
-  notificationRules,
-  broadcastCampaigns,
-  slaConfigs,
-  recallAdminList,
-  vehicleSalesByModel,
-  revenueChart,
-  adminKpis,
 } from '@/data/admin-dummy'
+import { ApiError } from '@/lib/api'
+import { getAnalyticsOverview, type AnalyticsOverview } from '@/lib/analytics-api'
 import { formatCurrency } from '@/lib/utils'
 import type { LeadStatus } from '@/types'
 
@@ -139,215 +129,103 @@ export function AdminServiceOpsPage() {
   )
 }
 
-export function AdminWarrantyPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Warranty & Recalls" description="Certificate issuance, claims workflow, recall management">
-        <Button className="gap-2" onClick={() => toast.success('Recall campaign initiated (demo)')}>
-          <Send className="h-4 w-4" /> Trigger Recall
-        </Button>
-      </PageHeader>
-
-      <Tabs defaultValue="claims">
-        <TabsList className="flex-wrap h-auto">
-          <TabsTrigger value="claims">Claims Queue</TabsTrigger>
-          <TabsTrigger value="recalls">Recalls</TabsTrigger>
-          <TabsTrigger value="certificates">Certificates</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="claims" className="space-y-3 mt-4">
-          {adminWarrantyQueue.map((c) => (
-            <Card key={c.id}>
-              <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="font-semibold">{c.claimType} — {c.vehicle}</p>
-                  <p className="text-sm text-muted-foreground">{c.customerName}</p>
-                  <p className="text-sm mt-1">{c.description}</p>
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <Badge variant="warning" className="capitalize">{c.status.replace('_', ' ')}</Badge>
-                  <Button size="sm" onClick={() => toast.success('Claim approved (demo)')}>Approve</Button>
-                  <Button size="sm" variant="outline" onClick={() => toast.info('Escalated (demo)')}>Escalate</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="recalls" className="space-y-3 mt-4">
-          {recallAdminList.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <p className="font-semibold">{r.title}</p>
-                    <p className="text-xs text-muted-foreground">{r.referenceCode}</p>
-                    <p className="text-sm text-muted-foreground mt-2">{r.description}</p>
-                  </div>
-                  <Badge variant={r.severity === 'critical' ? 'destructive' : 'warning'}>{r.severity}</Badge>
-                </div>
-                <div className="flex gap-4 mt-3 text-sm">
-                  <span>Affected: <strong>{r.affectedCount}</strong></span>
-                  <span>Notified: <strong>{r.notifiedCount}</strong></span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="certificates" className="mt-4">
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              <p>Digital warranty issuance — generate certificates for sold vehicles</p>
-              <Button className="mt-4" onClick={() => toast.success('Certificate generated (demo)')}>Issue Certificate</Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
-
-export function AdminSupportPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Support Inbox" description="Unified tickets across all categories with SLA enforcement" />
-
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-3">
-          {adminSupportQueue.map((t) => (
-            <Card key={t.id} className={t.slaStatus === 'at_risk' ? 'border-amber-500/40 bg-amber-500/5' : ''}>
-              <CardContent className="p-4">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <Badge>{t.category}</Badge>
-                  <Badge variant="outline">{t.status.replace('_', ' ')}</Badge>
-                  <Badge variant={t.priority === 'high' ? 'destructive' : 'secondary'}>{t.priority}</Badge>
-                  {t.slaStatus === 'at_risk' && <Badge variant="warning">SLA at risk</Badge>}
-                </div>
-                <p className="font-semibold">{t.subject}</p>
-                <p className="text-xs text-muted-foreground mt-1">{t.ticketNumber} · {t.customerName} · {t.assignedTo}</p>
-                <div className="flex gap-2 mt-3">
-                  <Button size="sm">Reply</Button>
-                  <Button size="sm" variant="outline">Assign</Button>
-                  <Button size="sm" variant="outline">Resolve</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base font-display">SLA Configuration</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {slaConfigs.map((s) => (
-              <div key={s.category} className="p-3 rounded-xl bg-muted/30">
-                <p className="font-medium text-sm">{s.category}</p>
-                <p className="text-xs text-muted-foreground">Response: {s.response} · Resolution: {s.resolution}</p>
-                {s.breaches > 0 && <Badge variant="warning" className="mt-1 text-[10px]">{s.breaches} breaches</Badge>}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-}
-
-export function AdminNotificationsPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Notification Engine" description="Rules, broadcasts, and service reminder configuration">
-        <Button className="gap-2" onClick={() => toast.success('Broadcast scheduled (demo)')}>
-          <Send className="h-4 w-4" /> New Broadcast
-        </Button>
-      </PageHeader>
-
-      <Tabs defaultValue="rules">
-        <TabsList>
-          <TabsTrigger value="rules">Automation Rules</TabsTrigger>
-          <TabsTrigger value="broadcasts">Campaigns</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="rules" className="space-y-3 mt-4">
-          {notificationRules.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
-                <div>
-                  <p className="font-semibold text-sm">{r.name}</p>
-                  <p className="text-xs text-muted-foreground">Trigger: {r.trigger} · Cadence: {r.cadence}</p>
-                  <div className="flex gap-1 mt-2">
-                    {r.channels.map((ch) => <Badge key={ch} variant="outline" className="text-[10px]">{ch}</Badge>)}
-                  </div>
-                </div>
-                <Badge variant={r.active ? 'success' : 'secondary'}>{r.active ? 'Active' : 'Disabled'}</Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="broadcasts" className="space-y-3 mt-4">
-          {broadcastCampaigns.map((c) => (
-            <Card key={c.id}>
-              <CardContent className="flex justify-between items-center p-4">
-                <div>
-                  <p className="font-semibold">{c.title}</p>
-                  <p className="text-xs text-muted-foreground">{c.segment} · Reach: {c.reach.toLocaleString()}</p>
-                </div>
-                <Badge variant={c.status === 'sent' ? 'success' : 'warning'}>{c.status}</Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-      </Tabs>
-    </div>
-  )
-}
+export { AdminNotificationsPage } from './AdminNotificationsPage'
 
 export function AdminAnalyticsPage() {
+  const [data, setData] = useState<AnalyticsOverview | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getAnalyticsOverview()
+      .then(setData)
+      .catch((err) => toast.error(err instanceof ApiError ? err.message : 'Failed to load analytics'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const inventoryChart = (data?.inventoryByModel ?? []).map((row) => ({
+    model: row.model,
+    available: row.available,
+    sold: row.sold,
+  }))
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Business Intelligence" description="Sales, service, and customer analytics" />
+      <PageHeader title="Business Intelligence" description="Live operational metrics from inventory, CRM, support, and warranty" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Monthly Revenue" value={formatCurrency(adminKpis.totalRevenue)} trend={{ value: '+12.4%', positive: true }} />
-        <StatCard label="New Customers" value={adminKpis.newCustomersMonth} trend={{ value: '+15.3%', positive: true }} />
-        <StatCard label="Lead Conversion" value="17%" trend={{ value: '+2.1%', positive: true }} />
-        <StatCard label="CSAT Score" value="4.7★" sub="Across all channels" />
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" /> Loading analytics…
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <StatCard label="Inventory available" value={data.inventoryAvailable} sub={`${data.inventoryReserved} reserved · ${data.inventorySold} sold`} />
+            <StatCard label="Customers" value={data.customersTotal} sub={`${data.customersNew30d} new in 30 days`} />
+            <StatCard label="Open tickets" value={data.openSupportTickets} sub={`${data.slaAtRiskTickets} SLA at risk`} />
+            <StatCard label="Pending claims" value={data.pendingWarrantyClaims} sub={`${data.activeCertificates} active certificates`} />
+          </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle className="font-display text-base">Revenue by Month (₦M)</CardTitle></CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueChart}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="sales" stroke="var(--color-primary)" strokeWidth={2} name="Sales" />
-                <Line type="monotone" dataKey="service" stroke="#6366f1" strokeWidth={2} name="Service" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle className="font-display text-base">Inventory by model</CardTitle></CardHeader>
+              <CardContent className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={inventoryChart} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="model" type="category" width={80} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="available" fill="var(--color-primary)" name="Available" radius={4} />
+                    <Bar dataKey="sold" fill="#6366f1" name="Sold" radius={4} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="font-display text-base">Sales by Model</CardTitle></CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={vehicleSalesByModel} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis type="number" />
-                <YAxis dataKey="model" type="category" width={80} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="sold" fill="var(--color-primary)" name="Sold YTD" radius={4} />
-                <Bar dataKey="available" fill="#6366f1" name="In Stock" radius={4} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+            <Card>
+              <CardHeader><CardTitle className="font-display text-base">Operations snapshot</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-xl border border-border/60 p-3 bg-muted/20">
+                    <p className="text-muted-foreground text-xs">Customers with vehicle</p>
+                    <p className="text-2xl font-bold tabular-nums">{data.customersWithVehicle}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 p-3 bg-muted/20">
+                    <p className="text-muted-foreground text-xs">Active recalls</p>
+                    <p className="text-2xl font-bold tabular-nums">{data.activeRecalls}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 p-3 bg-muted/20">
+                    <p className="text-muted-foreground text-xs">Campaigns sent</p>
+                    <p className="text-2xl font-bold tabular-nums">{data.campaignsSent}</p>
+                  </div>
+                  <div className="rounded-xl border border-border/60 p-3 bg-muted/20">
+                    <p className="text-muted-foreground text-xs">Unread notifications</p>
+                    <p className="text-2xl font-bold tabular-nums">{data.unreadNotificationsTotal}</p>
+                  </div>
+                </div>
+                <div className="pt-2 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open tickets by category</p>
+                  {data.supportByCategory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No open tickets</p>
+                  ) : (
+                    data.supportByCategory.map((row) => (
+                      <div key={row.name} className="flex justify-between text-sm capitalize">
+                        <span>{row.name.replace('_', ' ')}</span>
+                        <span className="font-bold tabular-nums">{row.count}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {data.serviceToday != null && data.serviceCapacity != null && (
+                  <p className="text-sm text-muted-foreground pt-2">
+                    Service today: <strong>{data.serviceToday}/{data.serviceCapacity}</strong> bay slots
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }

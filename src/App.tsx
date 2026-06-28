@@ -47,13 +47,13 @@ const AdminServiceOpsPage = lazy(() =>
   import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminServiceOpsPage })),
 )
 const AdminWarrantyPage = lazy(() =>
-  import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminWarrantyPage })),
+  import('@/pages/admin/AdminWarrantyPage').then((m) => ({ default: m.AdminWarrantyPage })),
 )
 const AdminSupportPage = lazy(() =>
-  import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminSupportPage })),
+  import('@/pages/admin/AdminSupportPage').then((m) => ({ default: m.AdminSupportPage })),
 )
 const AdminNotificationsPage = lazy(() =>
-  import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminNotificationsPage })),
+  import('@/pages/admin/AdminNotificationsPage').then((m) => ({ default: m.AdminNotificationsPage })),
 )
 const AdminAnalyticsPage = lazy(() =>
   import('@/pages/admin/AdminPages').then((m) => ({ default: m.AdminAnalyticsPage })),

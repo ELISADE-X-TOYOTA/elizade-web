@@ -2,21 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Activity,
+  ArrowUpDown,
   BadgeCheck,
   Building2,
   Calendar,
-  ChevronRight,
+  ChevronDown,
   Download,
+  Filter,
+  LayoutGrid,
+  List,
   Loader2,
   Mail,
   MapPin,
+  MoreHorizontal,
   Phone,
   Plus,
+  RefreshCw,
   Search,
   Send,
   Shield,
   Sparkles,
-  UserCheck,
   UserMinus,
   UserPlus,
   Users,
@@ -25,7 +30,6 @@ import {
   Bar,
   BarChart,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -33,7 +37,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -101,7 +104,9 @@ const EMPTY_FORM = {
   state: 'Lagos',
 }
 
-type StatusFilter = 'all' | 'active' | 'inactive'
+type StatusFilter = 'all' | 'active' | 'inactive' | 'pending'
+type SortKey = 'name' | 'newest' | 'department'
+type ViewMode = 'list' | 'grid'
 
 function deptStyle(dept: string) {
   return DEPT_STYLES[dept] ?? DEPT_STYLES.Operations
@@ -134,35 +139,6 @@ function ChartTooltip({
   )
 }
 
-function StatHighlight({
-  label,
-  value,
-  sub,
-  icon: Icon,
-  tone,
-}: {
-  label: string
-  value: number | string
-  sub?: string
-  icon: typeof Users
-  tone: string
-}) {
-  return (
-    <Card className="overflow-hidden border-border/80">
-      <CardContent className="p-5 flex items-start gap-4">
-        <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-xl', tone)}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-          <p className="font-display text-2xl font-bold tabular-nums mt-0.5">{value}</p>
-          {sub && <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
 function StatusPill({ active }: { active: boolean }) {
   return (
     <Badge variant={active ? 'success' : 'secondary'} className="gap-1">
@@ -187,6 +163,11 @@ export function AdminStaffPage() {
   const [search, setSearch] = useState('')
   const [deptFilter, setDeptFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [sortKey, setSortKey] = useState<SortKey>('newest')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [page, setPage] = useState(1)
+  const [insightsOpen, setInsightsOpen] = useState(false)
+  const pageSize = 10
 
   const [createOpen, setCreateOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -255,10 +236,11 @@ export function AdminStaffPage() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    return staff.filter((s) => {
+    let rows = staff.filter((s) => {
       if (deptFilter !== 'all' && s.department !== deptFilter) return false
       if (statusFilter === 'active' && !s.isActive) return false
       if (statusFilter === 'inactive' && s.isActive) return false
+      if (statusFilter === 'pending' && s.isVerified) return false
       if (!q) return true
       const name = staffName(s).toLowerCase()
       return (
@@ -268,7 +250,22 @@ export function AdminStaffPage() {
         s.department.toLowerCase().includes(q)
       )
     })
-  }, [staff, search, deptFilter, statusFilter])
+
+    rows = [...rows].sort((a, b) => {
+      if (sortKey === 'name') return staffName(a).localeCompare(staffName(b))
+      if (sortKey === 'department') return a.department.localeCompare(b.department)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    })
+
+    return rows
+  }, [staff, search, deptFilter, statusFilter, sortKey])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize)
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, deptFilter, statusFilter, sortKey])
 
   const activityData = useMemo(
     () =>
@@ -282,15 +279,6 @@ export function AdminStaffPage() {
   const deptChartData = useMemo(
     () => stats.deptCounts.filter((d) => d.count > 0),
     [stats.deptCounts],
-  )
-
-  const verificationData = useMemo(
-    () =>
-      [
-        { name: 'Verified', value: stats.verified, color: '#0ea5e9' },
-        { name: 'Pending', value: stats.unverified, color: '#f59e0b' },
-      ].filter((d) => d.value > 0),
-    [stats.verified, stats.unverified],
   )
 
   const openDetail = (member: StaffMember) => {
@@ -425,373 +413,432 @@ export function AdminStaffPage() {
   const activePct = stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Team & staff"
-        description="Onboard staff, assign departments, and manage portal access"
-      >
+    <div className="space-y-5">
+      {/* Page title row — lead-management style */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Team management</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Onboard staff, assign departments, and manage portal access
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="gap-2" onClick={exportCsv} disabled={filtered.length === 0}>
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={exportCsv} disabled={filtered.length === 0}>
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button className="gap-2" onClick={() => setCreateOpen(true)}>
+          <Button className="gap-2 rounded-xl shadow-md shadow-[#ffcf0f]/20" onClick={() => setCreateOpen(true)}>
             <Plus className="h-4 w-4" />
             Add staff
           </Button>
         </div>
-      </PageHeader>
-
-      {/* KPI row */}
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatHighlight
-          label="Total team"
-          value={stats.total}
-          sub="Staff portal accounts"
-          icon={Users}
-          tone="bg-violet-500/12 text-violet-600 dark:text-violet-400"
-        />
-        <StatHighlight
-          label="Active now"
-          value={stats.active}
-          sub={`${stats.inactive} deactivated · ${activePct}% ready`}
-          icon={UserCheck}
-          tone="bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
-        />
-        <StatHighlight
-          label="Departments staffed"
-          value={stats.activeDepts}
-          sub={`Across ${DEPARTMENTS.length} operational areas`}
-          icon={Building2}
-          tone="bg-amber-500/12 text-amber-700 dark:text-amber-400"
-        />
-        <StatHighlight
-          label="New hires (30d)"
-          value={stats.added30d}
-          sub={`${stats.verified} verified accounts`}
-          icon={Sparkles}
-          tone="bg-sky-500/12 text-sky-600 dark:text-sky-400"
-        />
       </div>
 
-      {/* Charts */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="border-border/80">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="h-4 w-4 text-emerald-500" />
-              Account status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex h-[220px] items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : activityData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-16">No staff data yet</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={activityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={52}
-                    outerRadius={78}
-                    paddingAngle={3}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {activityData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} stroke="transparent" />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/80">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-violet-500" />
-              By department
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex h-[220px] items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : deptChartData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-16">No departments assigned yet</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={deptChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={52}
-                    outerRadius={78}
-                    paddingAngle={2}
-                    dataKey="count"
-                    nameKey="name"
-                  >
-                    {deptChartData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} stroke="transparent" />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<ChartTooltip />} />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    formatter={(value) => <span className="text-xs text-muted-foreground">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/80">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-sky-500" />
-              Top locations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex h-[220px] items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : stats.stateCounts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-16">No location data yet</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={stats.stateCounts} layout="vertical" margin={{ left: 4, right: 12 }}>
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    width={72}
-                    tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }} />
-                  <Bar dataKey="count" name="Staff" radius={[0, 6, 6, 0]} barSize={14} fill="#6366f1" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Verification strip */}
-      {!loading && stats.total > 0 && (
-        <Card className="border-border/80 bg-gradient-to-r from-card via-card to-secondary/20">
-          <CardContent className="p-5 flex flex-col md:flex-row md:items-center gap-6">
-            <div className="flex-1 min-w-[200px]">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Verification & onboarding
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                <span className="font-semibold text-foreground">{stats.verified}</span> verified ·{' '}
-                <span className="font-semibold text-foreground">{stats.unverified}</span> pending ·{' '}
-                <span className="font-semibold text-foreground">{stats.added30d}</span> joined in last 30 days
-              </p>
-            </div>
-            <div className="h-16 w-full md:w-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={verificationData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={28}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {verificationData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} stroke="transparent" />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<ChartTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filters */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
+      {/* Sub-navigation tabs */}
+      <div className="flex flex-wrap items-center gap-6 border-b border-border/70">
+        {(
+          [
+            { key: 'all', label: 'All staff' },
+            { key: 'active', label: 'Active' },
+            { key: 'inactive', label: 'Deactivated' },
+            { key: 'pending', label: 'Pending verification' },
+          ] as const
+        ).map((tab) => (
           <button
+            key={tab.key}
             type="button"
-            onClick={() => setDeptFilter('all')}
+            onClick={() => setStatusFilter(tab.key)}
             className={cn(
-              'rounded-full border px-4 py-2 text-sm font-medium transition-all',
-              deptFilter === 'all'
-                ? 'border-foreground bg-foreground text-background shadow-sm'
-                : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+              'relative pb-3 text-sm font-medium transition-colors',
+              statusFilter === tab.key
+                ? 'text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[#ffcf0f]'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            All departments
+            {tab.label}
           </button>
-          {DEPARTMENTS.map((d) => {
-            const count = stats.deptCounts.find((x) => x.name === d)?.count ?? 0
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDeptFilter(deptFilter === d ? 'all' : d)}
-                className={cn(
-                  'rounded-full border px-4 py-2 text-sm font-medium transition-all',
-                  deptFilter === d
-                    ? 'border-foreground bg-foreground text-background shadow-sm'
-                    : 'border-border bg-card text-muted-foreground hover:border-foreground/30 hover:text-foreground',
-                )}
-              >
-                {d} ({count})
-              </button>
-            )
-          })}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { key: 'all', label: 'All status' },
-              { key: 'active', label: 'Active' },
-              { key: 'inactive', label: 'Deactivated' },
-            ] as const
-          ).map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setStatusFilter(f.key)}
-              className={cn(
-                'rounded-full border px-4 py-1.5 text-xs font-medium transition-all',
-                statusFilter === f.key
-                  ? 'border-foreground bg-foreground text-background'
-                  : 'border-border text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
 
-      {/* Table */}
-      <Card className="border-border/80 overflow-hidden">
-        <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle className="text-base font-display">Team directory</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {loading ? 'Loading…' : `${filtered.length} of ${staff.length} staff shown`}
-              </p>
+      {/* Compact KPI strip */}
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        {[
+          { label: 'Total team', value: stats.total, sub: 'Portal accounts', tone: 'text-violet-600' },
+          { label: 'Active now', value: stats.active, sub: `${activePct}% ready`, tone: 'text-emerald-600' },
+          { label: 'Departments', value: stats.activeDepts, sub: 'Staffed areas', tone: 'text-amber-600' },
+          { label: 'New hires (30d)', value: stats.added30d, sub: `${stats.verified} verified`, tone: 'text-sky-600' },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-2xl border border-border/70 bg-card px-4 py-3.5 shadow-sm"
+          >
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{item.label}</p>
+            <p className={cn('font-display mt-1 text-2xl font-bold tabular-nums', item.tone)}>{item.value}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{item.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
+        <CardContent className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <select
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="h-10 appearance-none rounded-xl border border-border bg-background py-2 pl-3 pr-9 text-sm"
+              >
+                <option value="all">All departments</option>
+                {DEPARTMENTS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
-            <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+            <div className="relative">
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                className="h-10 appearance-none rounded-xl border border-border bg-background py-2 pl-3 pr-9 text-sm"
+              >
+                <option value="newest">Sort: Newest</option>
+                <option value="name">Sort: Name</option>
+                <option value="department">Sort: Department</option>
+              </select>
+              <ArrowUpDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            </div>
+
+            <Button variant="outline" size="sm" className="gap-2 rounded-xl">
+              <Filter className="h-3.5 w-3.5" />
+              Filters
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <div className="flex rounded-xl border border-border bg-muted/30 p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                  viewMode === 'list' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                <List className="h-3.5 w-3.5" /> List
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                  viewMode === 'grid' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Grid
+              </button>
+            </div>
+
+            <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search name, email, phone…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-10"
+                className="h-10 rounded-full pl-10"
               />
             </div>
+
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={loadStaff} disabled={loading}>
+              <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            </Button>
           </div>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="py-16 text-center">
-              <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-4 font-medium">No staff found</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {staff.length === 0 ? 'Add your first team member to get started.' : 'Try adjusting your filters.'}
-              </p>
-              {staff.length === 0 && (
-                <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" /> Add staff
-                </Button>
+        </CardContent>
+      </Card>
+
+      {/* Results meta */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+        <span>
+          Showing {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of{' '}
+          {filtered.length} staff
+        </span>
+        <button
+          type="button"
+          onClick={() => setInsightsOpen((v) => !v)}
+          className="font-medium text-foreground hover:text-[#c8102e]"
+        >
+          {insightsOpen ? 'Hide team insights' : 'Show team insights'}
+        </button>
+      </div>
+
+      {/* Collapsible charts */}
+      {insightsOpen && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Activity className="h-4 w-4 text-emerald-500" />
+                Account status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {activityData.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">No data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={activityData} cx="50%" cy="50%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value" nameKey="name">
+                      {activityData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} stroke="transparent" />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
               )}
-            </div>
-          ) : (
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Building2 className="h-4 w-4 text-violet-500" />
+                By department
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {deptChartData.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">No data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie data={deptChartData} cx="50%" cy="50%" innerRadius={48} outerRadius={72} paddingAngle={2} dataKey="count" nameKey="name">
+                      {deptChartData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} stroke="transparent" />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<ChartTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="rounded-2xl border-border/70 shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <MapPin className="h-4 w-4 text-sky-500" />
+                Top locations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {stats.stateCounts.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">No data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={stats.stateCounts} layout="vertical" margin={{ left: 4, right: 12 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: 'var(--color-muted)', opacity: 0.3 }} />
+                    <Bar dataKey="count" name="Staff" radius={[0, 6, 6, 0]} barSize={14} fill="#6366f1" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Directory — list or grid */}
+      <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-20 text-center">
+            <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
+            <p className="mt-4 font-medium">No staff found</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {staff.length === 0 ? 'Add your first team member to get started.' : 'Try adjusting your filters.'}
+            </p>
+            {staff.length === 0 && (
+              <Button className="mt-4 gap-2 rounded-xl" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" /> Add staff
+              </Button>
+            )}
+          </div>
+        ) : viewMode === 'grid' ? (
+          <CardContent className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {paged.map((member) => (
+              <div
+                key={member.id}
+                className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="flex items-start gap-3">
+                  <AvatarImage name={staffName(member)} className="h-11 w-11 text-sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">{staffName(member)}</p>
+                    <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <DeptPill department={member.department} />
+                      <StatusPill active={member.isActive} />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
+                  <p className="text-[11px] text-muted-foreground">{member.city}, {member.state}</p>
+                  <Button size="sm" variant="outline" className="rounded-lg" onClick={() => openDetail(member)}>
+                    View
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        ) : (
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/10 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="px-5 py-3 font-semibold">Staff member</th>
-                  <th className="px-5 py-3 font-semibold hidden md:table-cell">Contact</th>
-                  <th className="px-5 py-3 font-semibold">Department</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold hidden sm:table-cell">Joined</th>
-                  <th className="px-5 py-3 w-10" />
+                <tr className="border-b border-border bg-[#f8f9fc] text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:bg-muted/20">
+                  <th className="px-5 py-3.5">Profile</th>
+                  <th className="px-5 py-3.5 hidden md:table-cell">Contact</th>
+                  <th className="px-5 py-3.5">Department</th>
+                  <th className="px-5 py-3.5 hidden lg:table-cell">Location</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Quick action</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((member) => (
+                {paged.map((member) => (
                   <tr
                     key={member.id}
                     onClick={() => openDetail(member)}
                     className={cn(
-                      'border-b border-border/50 hover:bg-muted/30 cursor-pointer group transition-colors',
-                      selected?.id === member.id && detailOpen && 'bg-muted/40',
+                      'group cursor-pointer border-b border-border/50 transition-colors hover:bg-[#ffcf0f]/5',
+                      selected?.id === member.id && detailOpen && 'bg-[#ffcf0f]/8',
                     )}
                   >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <AvatarImage name={staffName(member)} className="h-9 w-9 text-xs" />
+                        <AvatarImage name={staffName(member)} className="h-10 w-10 text-xs ring-2 ring-border/60" />
                         <div>
-                          <p className="font-medium">{staffName(member)}</p>
-                          <p className="text-xs text-muted-foreground md:hidden">{member.email}</p>
+                          <p className="font-semibold">{staffName(member)}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Joined {formatDateTime(member.createdAt)}
+                          </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
-                      <p className="text-xs truncate max-w-[200px]">{member.email}</p>
-                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{member.phone}</p>
+                      <p className="text-sm">{member.email}</p>
+                      <p className="mt-0.5 font-mono text-xs text-muted-foreground">{member.phone}</p>
                     </td>
                     <td className="px-5 py-4">
                       <DeptPill department={member.department} />
                     </td>
+                    <td className="px-5 py-4 hidden lg:table-cell">
+                      <p className="text-sm">{member.city}</p>
+                      <p className="text-xs text-muted-foreground">{member.state}</p>
+                    </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-1">
                         <StatusPill active={member.isActive} />
-                        {member.isVerified && (
+                        {member.isVerified ? (
                           <Badge variant="outline" className="gap-1 text-[10px]">
                             <BadgeCheck className="h-3 w-3" /> Verified
                           </Badge>
+                        ) : (
+                          <Badge variant="warning" className="text-[10px]">Pending</Badge>
                         )}
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-xs text-muted-foreground hidden sm:table-cell whitespace-nowrap">
-                      {formatDateTime(member.createdAt)}
-                    </td>
                     <td className="px-5 py-4">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                          title="Send OTP"
+                          disabled={!member.isActive || actionLoading === `otp-${member.id}`}
+                          onClick={async () => {
+                            setActionLoading(`otp-${member.id}`)
+                            try {
+                              await sendStaffLoginOtp(member.id)
+                              toast.success('OTP sent — check API terminal')
+                            } catch (err) {
+                              toast.error(err instanceof ApiError ? err.message : 'Could not send OTP')
+                            } finally {
+                              setActionLoading(null)
+                            }
+                          }}
+                        >
+                          {actionLoading === `otp-${member.id}` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                          title="Email"
+                          onClick={() => window.open(`mailto:${member.email}`, '_blank')}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                          title="Call"
+                          onClick={() => window.open(`tel:${member.phone}`, '_blank')}
+                        >
+                          <Phone className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                          title="View profile"
+                          onClick={() => openDetail(member)}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </CardContent>
+          </div>
+        )}
+
+        {!loading && filtered.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-5 py-4">
+            <p className="text-xs text-muted-foreground">
+              Page {page} of {totalPages}
+            </p>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                Previous
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map((n) => (
+                <Button
+                  key={n}
+                  variant={page === n ? 'default' : 'outline'}
+                  size="sm"
+                  className="min-w-9 rounded-lg"
+                  onClick={() => setPage(n)}
+                >
+                  {n}
+                </Button>
+              ))}
+              <Button variant="outline" size="sm" className="rounded-lg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Detail drawer */}

@@ -56,6 +56,7 @@ import {
   type CustomerVehicle,
 } from '@/lib/customers-api'
 import { cn, formatDateTime } from '@/lib/utils'
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#64748b']
 
@@ -294,11 +295,12 @@ export function AdminCustomersPage() {
   }
 
   const selectedName = selected ? customerName(selected) : ''
+  const pageTitle = useAdminPageTitle()
 
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Customer CRM"
+        title={pageTitle}
         description="Segment intelligence, ownership history, and relationship notes"
       />
 
@@ -643,18 +645,17 @@ export function AdminCustomersPage() {
         width="xl"
         customHeader={
           selected && (
-            <div className="relative overflow-hidden">
-              <div className="h-32 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900" />
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/25 via-transparent to-emerald-500/15" />
+            <div className="relative overflow-hidden bg-[#0a1628]">
+              <div className="h-28" />
               <div className="relative px-6 pb-5 -mt-10">
                 <AvatarImage
                   src={selected.avatar ?? undefined}
                   name={selectedName}
-                  className="h-16 w-16 text-lg ring-4 ring-card shadow-lg"
+                  className="h-16 w-16 text-lg ring-4 ring-[#0a1628] shadow-lg"
                 />
                 <div className="mt-3">
-                  <h2 className="font-display text-xl font-bold tracking-tight">{selectedName}</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">{selected.email ?? selected.phone}</p>
+                  <h2 className="font-display text-xl font-bold tracking-tight text-white">{selectedName}</h2>
+                  <p className="text-sm text-white/60 mt-0.5">{selected.email ?? selected.phone}</p>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <Badge variant={selected.isActive ? 'success' : 'secondary'}>
                       {selected.isActive ? 'Active' : 'Inactive'}

@@ -54,6 +54,7 @@ import {
   type StaffMember,
 } from '@/lib/staff-api'
 import { cn, formatDateTime } from '@/lib/utils'
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 const DEPARTMENTS = ['Sales', 'Service', 'Warranty', 'Support', 'Operations'] as const
 const NIGERIAN_STATES = ['Lagos', 'Abuja', 'Rivers', 'Oyo', 'Kano', 'Delta', 'Edo', 'Ogun', 'Kaduna', 'Enugu']
@@ -158,6 +159,7 @@ function DeptPill({ department }: { department: string }) {
 }
 
 export function AdminStaffPage() {
+  const pageTitle = useAdminPageTitle()
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -417,7 +419,7 @@ export function AdminStaffPage() {
       {/* Page title row — lead-management style */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Team management</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{pageTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Onboard staff, assign departments, and manage portal access
           </p>
@@ -920,7 +922,7 @@ export function AdminStaffPage() {
             <TabsContent value="overview" className="space-y-5 mt-0">
               <div className="grid sm:grid-cols-2 gap-3">
                 {[
-                  { icon: Phone, label: 'Phone (OTP login)', value: selected.phone, mono: true },
+                  { icon: Mail, label: 'Email (OTP login)', value: selected.email ?? '—' },
                   { icon: Mail, label: 'Work email', value: selected.email },
                   { icon: MapPin, label: 'Location', value: `${selected.city}, ${selected.state}` },
                   { icon: Calendar, label: 'Joined', value: formatDateTime(selected.createdAt) },
@@ -1040,7 +1042,7 @@ export function AdminStaffPage() {
               <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-2">
                 <p className="text-sm font-medium">Portal access</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Staff sign in with OTP using their registered phone number. Deactivated accounts cannot authenticate
+                  Staff sign in with OTP using their registered email address. Deactivated accounts cannot authenticate
                   until reactivated.
                 </p>
               </div>

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import {
@@ -10,6 +10,7 @@ import {
   Wrench,
   History,
   AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,13 +23,18 @@ import { FadeIn } from '@/components/effects/PageTransition'
 import {
   branches,
   ownedVehicles,
-  serviceAppointments,
   serviceHistory,
-  activeServiceJob,
-  getBranchById,
   getOwnedVehicleById,
 } from '@/data/dummy'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { ApiError } from '@/lib/api'
+import {
+  getServiceTrack,
+  listMyServiceAppointments,
+  respondAdditionalWork,
+  type CustomerAppointment,
+  type ServiceTrackPayload,
+} from '@/lib/service-api'
+import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils'
 
 const statusColors: Record<string, string> = {
   confirmed: 'success',
@@ -39,6 +45,23 @@ const statusColors: Record<string, string> = {
 }
 
 export function ServicePage() {
+  const [appointments, setAppointments] = useState<CustomerAppointment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    listMyServiceAppointments()
+      .then(setAppointments)
+      .catch((err) => toast.error(err instanceof ApiError ? err.message : 'Failed to load appointments'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const activeTrack = appointments.find(
+    (a) =>
+      a.pendingAdditionalWork ||
+      a.status === 'in_progress' ||
+      a.status === 'awaiting_approval',
+  )
+
   return (
     <div className="space-y-6">
       <FadeIn>
@@ -60,15 +83,24 @@ export function ServicePage() {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/service/track/sa-2">
-          <Card className="hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer border-amber-500/30">
+        <Link to={activeTrack ? `/service/track/${activeTrack.id}` : '/service'}>
+          <Card className={cn(
+            'hover:shadow-lg transition-all hover:-translate-y-1 cursor-pointer',
+            activeTrack?.pendingAdditionalWork && 'border-amber-500/30',
+          )}>
             <CardContent className="flex items-center gap-4 p-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
                 <Wrench className="h-6 w-6 text-amber-500" />
               </div>
               <div>
                 <p className="font-semibold">Track Active Job</p>
-                <p className="text-xs text-amber-600">Awaiting approval</p>
+                <p className="text-xs text-amber-600">
+                  {activeTrack
+                    ? activeTrack.pendingAdditionalWork
+                      ? 'Approval needed'
+                      : activeTrack.status.replace('_', ' ')
+                    : 'No active job'}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -89,33 +121,41 @@ export function ServicePage() {
       </div>
 
       <FadeIn>
-        <h2 className="font-display text-lg font-semibold mb-4">Upcoming Appointments</h2>
+        <h2 className="font-display text-lg font-semibold mb-4">Your Appointments</h2>
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" /> Loading appointments…
+          </div>
+        ) : appointments.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">No service appointments yet</p>
+        ) : (
         <div className="space-y-3">
-          {serviceAppointments.map((apt) => {
-            const vehicle = getOwnedVehicleById(apt.vehicleId)
-            const branch = getBranchById(apt.branchId)
-            return (
+          {appointments.map((apt) => (
               <Card key={apt.id}>
                 <CardContent className="flex items-center gap-4 p-4">
-                  <img src={vehicle?.image} alt="" className="h-16 w-20 rounded-xl object-cover" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold capitalize">{apt.serviceType} Service</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold capitalize">{apt.serviceType.replace('_', ' ')} Service</p>
                       <Badge variant={statusColors[apt.status] as 'success' | 'warning' | 'default'}>
                         {apt.status.replace('_', ' ')}
                       </Badge>
+                      {apt.pendingAdditionalWork && (
+                        <Badge variant="warning" className="text-[10px]">Approval needed</Badge>
+                      )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{vehicle?.model} · {branch?.name}</p>
+                    <p className="text-sm text-muted-foreground">{apt.vehicleLabel} · {apt.branchName}</p>
                     <p className="text-xs text-muted-foreground mt-1">{formatDateTime(apt.scheduledAt)}</p>
                   </div>
-                  <Link to={`/service/track/${apt.id}`}>
-                    <Button size="sm" variant="outline">Track</Button>
-                  </Link>
+                  {(apt.jobId || apt.status !== 'requested') && (
+                    <Link to={`/service/track/${apt.id}`}>
+                      <Button size="sm" variant="outline">Track</Button>
+                    </Link>
+                  )}
                 </CardContent>
               </Card>
-            )
-          })}
+          ))}
         </div>
+        )}
       </FadeIn>
     </div>
   )
@@ -192,59 +232,126 @@ export function ServiceBookPage() {
 }
 
 export function ServiceTrackPage() {
-  const job = activeServiceJob
-  const completedStages = job.stages.filter((s) => s.completed).length
-  const progress = (completedStages / job.stages.length) * 100
+  const { id } = useParams<{ id: string }>()
+  const [track, setTrack] = useState<ServiceTrackPayload | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
-  const handleApprove = () => toast.success('Additional work approved!')
-  const handleReject = () => toast.info('Additional work rejected')
+  const loadTrack = useCallback(async () => {
+    if (!id) return
+    setLoading(true)
+    try {
+      setTrack(await getServiceTrack(id))
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to load service tracking')
+      setTrack(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    loadTrack()
+  }, [loadTrack])
+
+  const job = track?.job
+  const appointment = track?.appointment
+  const stages = job?.stages ?? []
+  const completedStages = stages.filter((s) => s.completed).length
+  const progress = stages.length > 0 ? (completedStages / stages.length) * 100 : 0
+  const pendingWork = job?.additionalWork.filter((w) => w.status === 'pending_approval') ?? []
+
+  const handleDecision = async (workId: string, decision: 'approve' | 'reject') => {
+    if (!job) return
+    setBusyId(workId)
+    try {
+      await respondAdditionalWork(job.id, workId, decision)
+      toast.success(decision === 'approve' ? 'Additional work approved' : 'Additional work declined')
+      await loadTrack()
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to submit your response')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading service tracker…
+      </div>
+    )
+  }
+
+  if (!track || !appointment) {
+    return (
+      <div className="space-y-4 max-w-3xl">
+        <Link to="/service"><Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />Back</Button></Link>
+        <p className="text-muted-foreground">Appointment not found or you do not have access.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
       <Link to="/service"><Button variant="ghost" size="sm" className="gap-2"><ArrowLeft className="h-4 w-4" />Back</Button></Link>
       <FadeIn>
         <h1 className="font-display text-3xl font-bold">Live Service Tracking</h1>
-        <p className="text-muted-foreground flex items-center gap-2 mt-1">
-          <Clock className="h-4 w-4" />
-          Est. completion: {formatDateTime(job.estimatedCompletion)}
+        <p className="text-muted-foreground mt-1 capitalize">
+          {appointment.serviceType.replace('_', ' ')} · {appointment.vehicleLabel} · {appointment.branchName}
         </p>
+        {job?.estimatedCompletion && (
+          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+            <Clock className="h-4 w-4" />
+            Est. completion: {formatDateTime(job.estimatedCompletion)}
+          </p>
+        )}
       </FadeIn>
 
-      {/* Progress */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="font-medium">Job Progress</span>
-            <span className="text-muted-foreground">{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-          <div className="mt-6 space-y-3">
-            {job.stages.map((stage, i) => (
-              <motion.div
-                key={stage.label}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="flex items-center gap-3"
-              >
-                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                  stage.completed ? 'bg-emerald-500/15 text-emerald-600' : 'bg-muted text-muted-foreground'
-                }`}>
-                  {stage.completed ? <CheckCircle2 className="h-4 w-4" /> : <span className="text-xs font-bold">{i + 1}</span>}
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${stage.completed ? '' : 'text-muted-foreground'}`}>{stage.label}</p>
-                  {stage.timestamp && <p className="text-xs text-muted-foreground">{formatDateTime(stage.timestamp)}</p>}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {!job ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Your appointment is <span className="font-medium capitalize">{appointment.status.replace('_', ' ')}</span>.
+            Live job tracking will appear once the workshop starts work on your vehicle.
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="font-medium">Job Progress</span>
+              <span className="text-muted-foreground">{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+            <div className="mt-6 space-y-3">
+              {stages.map((stage, i) => (
+                <motion.div
+                  key={stage.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    stage.completed ? 'bg-emerald-500/15 text-emerald-600' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {stage.completed ? <CheckCircle2 className="h-4 w-4" /> : <span className="text-xs font-bold">{i + 1}</span>}
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-sm font-medium ${stage.completed ? '' : 'text-muted-foreground'}`}>{stage.label}</p>
+                    {stage.completedAt && (
+                      <p className="text-xs text-muted-foreground">{formatDateTime(stage.completedAt)}</p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Additional work approval */}
-      {job.additionalWork && job.additionalWork.status === 'pending_approval' && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
+      {pendingWork.map((work) => (
+        <Card key={work.id} className="border-amber-500/30 bg-amber-500/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-amber-600">
               <AlertCircle className="h-5 w-5" />
@@ -252,31 +359,43 @@ export function ServiceTrackPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm">{job.additionalWork.description}</p>
-            <p className="font-display text-2xl font-bold">{formatCurrency(job.additionalWork.cost)}</p>
+            <p className="text-sm">{work.description}</p>
+            <p className="font-display text-2xl font-bold">{formatCurrency(Number(work.cost))}</p>
             <div className="flex gap-3">
-              <Button className="flex-1" onClick={handleApprove}>Approve</Button>
-              <Button variant="outline" className="flex-1" onClick={handleReject}>Decline</Button>
+              <Button
+                className="flex-1"
+                disabled={busyId === work.id}
+                onClick={() => handleDecision(work.id, 'approve')}
+              >
+                {busyId === work.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Approve'}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                disabled={busyId === work.id}
+                onClick={() => handleDecision(work.id, 'reject')}
+              >
+                Decline
+              </Button>
             </div>
           </CardContent>
         </Card>
-      )}
+      ))}
 
-      {/* Invoice preview */}
-      {job.invoice && (
+      {job?.invoice && (
         <Card>
           <CardHeader><CardTitle>Digital Invoice Preview</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {job.invoice.lineItems.map((item) => (
-              <div key={item.description} className="flex justify-between text-sm">
+              <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{item.description}</span>
-                <span>{formatCurrency(item.amount)}</span>
+                <span>{formatCurrency(Number(item.amount))}</span>
               </div>
             ))}
             <div className="border-t border-border pt-3 space-y-1">
-              <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatCurrency(job.invoice.subtotal)}</span></div>
-              <div className="flex justify-between text-sm"><span>Tax</span><span>{formatCurrency(job.invoice.tax)}</span></div>
-              <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{formatCurrency(job.invoice.total)}</span></div>
+              <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatCurrency(Number(job.invoice.subtotal))}</span></div>
+              <div className="flex justify-between text-sm"><span>Tax</span><span>{formatCurrency(Number(job.invoice.tax))}</span></div>
+              <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{formatCurrency(Number(job.invoice.total))}</span></div>
             </div>
           </CardContent>
         </Card>

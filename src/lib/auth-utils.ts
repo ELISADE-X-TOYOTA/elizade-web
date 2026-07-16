@@ -1,7 +1,10 @@
 import type { UserProfile } from '@/types'
 
 export function getPostAuthPath(role: UserProfile['role']): string {
-  return role === 'admin' || role === 'staff' ? '/admin/dashboard' : '/dashboard'
+  if (role === 'admin' || role === 'staff') {
+    return '/admin/dashboard'
+  }
+  return '/login'
 }
 
 export function canAccessAdminPortal(role: UserProfile['role'] | undefined): boolean {

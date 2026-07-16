@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   CreditCard,
   Calendar,
+  Download,
   Eye,
   Fuel,
   Gauge,
@@ -34,6 +35,7 @@ import {
   createVehicle,
   deleteVehicle,
   deleteVehicleImage,
+  downloadBulkImportTemplate,
   getAdminVehicle,
   listAdminVehicles,
   updateVehicle,
@@ -47,6 +49,7 @@ import { listBranches, resolveMediaUrl } from '@/lib/vehicle-mappers'
 import { getVehicleImages } from '@/lib/images'
 import type { Branch } from '@/types'
 import { cn, formatCurrency, formatDateTime } from '@/lib/utils'
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 const AVAILABILITY = ['available', 'reserved', 'sold', 'transferred'] as const
 const FEATURED_TONES = [
@@ -142,6 +145,7 @@ function pickFeatured(items: VehicleAdminListItem[]) {
 }
 
 export function AdminInventoryPage() {
+  const pageTitle = useAdminPageTitle()
   const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState<VehicleAdminListItem[]>([])
   const [total, setTotal] = useState(0)
@@ -344,7 +348,12 @@ export function AdminInventoryPage() {
 
   const vehicleImage = (url: string | null | undefined, model: string) => {
     const resolved = resolveMediaUrl(url)
-    if (resolved && !resolved.includes('unsplash.com') && !resolved.includes('picsum.photos')) {
+    if (
+      resolved &&
+      !resolved.includes('unsplash.com') &&
+      !resolved.includes('picsum.photos') &&
+      !resolved.includes('wikimedia.org')
+    ) {
       return resolved
     }
     return getVehicleImages(model)[0] || ''
@@ -358,12 +367,21 @@ export function AdminInventoryPage() {
     detail?.model ?? items.find((v) => v.id === editingId)?.model ?? 'Corolla',
   )
 
+  const handleDownloadTemplate = async () => {
+    try {
+      await downloadBulkImportTemplate()
+      toast.success('CSV template downloaded')
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not download template')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">Vehicle inventory</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{pageTitle}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Publish, price, and manage catalogue listings</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -378,6 +396,10 @@ export function AdminInventoryPage() {
               e.target.value = ''
             }}
           />
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={handleDownloadTemplate}>
+            <Download className="h-4 w-4" />
+            CSV template
+          </Button>
           <Button variant="outline" className="gap-2 rounded-xl" disabled={importing} onClick={() => importRef.current?.click()}>
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             Bulk import
@@ -387,6 +409,18 @@ export function AdminInventoryPage() {
           </Button>
         </div>
       </div>
+
+      <Card className="rounded-2xl border-border/70 bg-muted/15">
+        <CardContent className="p-4 text-sm text-muted-foreground leading-relaxed">
+          <p className="font-medium text-foreground">Bulk import format</p>
+          <p className="mt-1">
+            Download the CSV template first. Required columns:{' '}
+            <span className="font-mono text-xs text-foreground">model, trim, year, color, price, fuelType, transmission, engine, branchId</span>.
+            Optional: vin, stockNumber, make, availability, isPublished. Use branch UUIDs from the Branches page for{' '}
+            <span className="font-mono text-xs">branchId</span>.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Search + filters — RentalX style */}
       <Card className="overflow-hidden rounded-2xl border-border/70 shadow-sm">

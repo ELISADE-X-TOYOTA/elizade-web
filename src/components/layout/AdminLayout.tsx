@@ -4,6 +4,7 @@ import {
   Car,
   Users,
   UserCog,
+  MapPin,
   Target,
   Wrench,
   Shield,
@@ -13,8 +14,6 @@ import {
   LogOut,
   Menu,
   X,
-  HelpCircle,
-  Settings,
   Sparkles,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -25,6 +24,8 @@ import { AvatarImage } from '@/components/ui/safe-image'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { AdminGlobalSearch } from '@/components/admin/AdminGlobalSearch'
+import { AdminHeaderActions } from '@/components/admin/AdminHeaderActions'
+import { getAdminPageTitle } from '@/lib/admin-page-titles'
 
 const baseNavItems = [
   { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -38,24 +39,13 @@ const baseNavItems = [
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
-const adminOnlyNavItems = [{ to: '/admin/staff', label: 'Staff', icon: UserCog }]
-
-const PAGE_TITLES: Record<string, string> = {
-  '/admin/dashboard': 'Operations overview',
-  '/admin/inventory': 'Vehicle inventory',
-  '/admin/customers': 'Customer CRM',
-  '/admin/leads': 'Lead pipeline',
-  '/admin/service': 'Service operations',
-  '/admin/warranty': 'Warranty & recalls',
-  '/admin/support': 'Support inbox',
-  '/admin/notifications': 'Notifications',
-  '/admin/analytics': 'Business intelligence',
-  '/admin/staff': 'Team management',
-}
+const adminOnlyNavItems = [
+  { to: '/admin/branches', label: 'Branches', icon: MapPin },
+  { to: '/admin/staff', label: 'Staff', icon: UserCog },
+]
 
 function pageTitle(pathname: string) {
-  const match = Object.entries(PAGE_TITLES).find(([path]) => pathname === path || pathname.startsWith(`${path}/`))
-  return match?.[1] ?? 'Admin portal'
+  return getAdminPageTitle(pathname)
 }
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -79,10 +69,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-[4.25rem] items-center gap-3 border-b border-white/10 px-5">
-          <BrandMark size="md" className="brightness-110" />
+        <div className="flex min-h-[6.5rem] items-center gap-3 border-b border-white/10 px-5 py-4">
+          <BrandMark size="xl" className="h-20" />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-[15px] font-bold tracking-tight">Elizade Connect</p>
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-white/45">{portalLabel}</p>
           </div>
           <Button
@@ -196,16 +185,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               <AdminGlobalSearch isAdmin={isAdmin} />
 
               <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-                <Button variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex">
-                  <HelpCircle className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="relative rounded-full">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#c8102e]" />
-                </Button>
-                <Button variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex">
-                  <Settings className="h-4 w-4" />
-                </Button>
+                <AdminHeaderActions />
 
                 <div className="hidden items-center gap-2 rounded-full border border-border/70 bg-card py-1 pl-1 pr-3 shadow-sm sm:flex">
                   <AvatarImage src={user?.avatar} name={fullName} className="h-8 w-8" />

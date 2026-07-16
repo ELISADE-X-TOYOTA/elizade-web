@@ -41,6 +41,7 @@ import {
 } from '@/lib/warranty-api'
 import { listSupportAssignees, type SupportAssignee } from '@/lib/support-api'
 import { cn, formatDateTime } from '@/lib/utils'
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 const CLAIM_FILTERS = [
   { key: 'pending', label: 'Pending' },
@@ -97,6 +98,7 @@ function StatHighlight({
 }
 
 export function AdminWarrantyPage() {
+  const pageTitle = useAdminPageTitle()
   const [summary, setSummary] = useState<WarrantySummary | null>(null)
   const [claims, setClaims] = useState<WarrantyClaim[]>([])
   const [claimsTotal, setClaimsTotal] = useState(0)
@@ -281,7 +283,7 @@ export function AdminWarrantyPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Warranty & Recalls"
+        title={pageTitle}
         description="Claims workflow, certificate issuance, and recall campaign management"
       >
         <div className="flex flex-wrap gap-2">

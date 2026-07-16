@@ -32,7 +32,7 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!canAccessAdminPortal) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/login" replace />
   }
 
   return <>{children}</>

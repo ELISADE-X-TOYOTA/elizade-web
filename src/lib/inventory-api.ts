@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload } from '@/lib/api'
+import { apiFetch, apiUpload, ApiError, getAccessToken } from '@/lib/api'
 
 export interface VehicleImage {
   id: string
@@ -204,4 +204,24 @@ export function bulkImportVehicles(file: File): Promise<BulkImportResult> {
   const form = new FormData()
   form.append('file', file)
   return apiUpload('/admin/vehicles/bulk-import', form)
+}
+
+export async function downloadBulkImportTemplate(): Promise<void> {
+  const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1'
+  const token = getAccessToken()
+  const headers = new Headers()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const res = await fetch(`${API_BASE}/admin/vehicles/bulk-import/template`, { headers })
+  if (!res.ok) {
+    throw new ApiError(res.statusText || 'Could not download template', res.status)
+  }
+  const csv = await res.text()
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'elizade-vehicle-import-template.csv'
+  anchor.click()
+  URL.revokeObjectURL(url)
 }

@@ -40,6 +40,7 @@ import {
   type SupportTicketListItem,
 } from '@/lib/support-api'
 import { cn, formatDateTime } from '@/lib/utils'
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 const STATUS_FILTERS = [
   { key: 'all', label: 'All' },
@@ -96,6 +97,7 @@ function StatHighlight({
 }
 
 export function AdminSupportPage() {
+  const pageTitle = useAdminPageTitle()
   const [summary, setSummary] = useState<SupportSummary | null>(null)
   const [tickets, setTickets] = useState<SupportTicketListItem[]>([])
   const [ticketsTotal, setTicketsTotal] = useState(0)
@@ -289,7 +291,7 @@ export function AdminSupportPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Support Inbox" description="Unified tickets across all categories with SLA enforcement">
+      <PageHeader title={pageTitle} description="Unified tickets across all categories with SLA enforcement">
         <Button className="gap-2" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> New ticket
         </Button>

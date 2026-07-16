@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -39,8 +40,8 @@ export function Drawer({
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex justify-end">
       <button
         type="button"
         className="absolute inset-0 bg-black/50 animate-drawer-overlay"
@@ -89,7 +90,8 @@ export function Drawer({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

@@ -19,10 +19,10 @@ interface AuthContextType {
   isLoading: boolean
   login: (payload: OtpRequestBody) => Promise<void>
   logout: () => void
-  completeOtp: (phone: string, code: string) => Promise<UserProfile>
+  completeOtp: (email: string, code: string) => Promise<UserProfile>
   resetOtp: () => void
   pendingOtp: boolean
-  pendingPhone: string
+  pendingEmail: string
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [pendingOtp, setPendingOtp] = useState(false)
-  const [pendingPhone, setPendingPhone] = useState('')
+  const [pendingEmail, setPendingEmail] = useState('')
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -42,6 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const profile = await fetchCurrentUser()
+      if (!checkAdminPortal(profile.role)) {
+        logoutApi()
+        return
+      }
       setUser(profile)
       setIsAuthenticated(true)
     } catch {
@@ -57,14 +61,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (payload: OtpRequestBody) => {
     await requestOtp(payload)
-    setPendingPhone(payload.phone)
+    setPendingEmail(payload.email)
     setPendingOtp(true)
   }
 
-  const completeOtp = async (phone: string, code: string) => {
-    const data = await verifyOtp(phone, code)
+  const completeOtp = async (email: string, code: string) => {
+    const data = await verifyOtp(email, code)
     setPendingOtp(false)
-    setPendingPhone('')
+    setPendingEmail('')
     setUser(data.user)
     setIsAuthenticated(true)
     return data.user
@@ -72,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetOtp = () => {
     setPendingOtp(false)
-    setPendingPhone('')
+    setPendingEmail('')
   }
 
   const logout = () => {
@@ -80,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false)
     setUser(null)
     setPendingOtp(false)
-    setPendingPhone('')
+    setPendingEmail('')
   }
 
   const isAdmin = user?.role === 'admin'
@@ -101,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         completeOtp,
         resetOtp,
         pendingOtp,
-        pendingPhone,
+        pendingEmail,
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Plus, Calendar, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -12,126 +12,16 @@ import {
 } from 'recharts'
 import { PageHeader, StatCard } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  adminLeads,
-  serviceScheduleToday,
-} from '@/data/admin-dummy'
 import { ApiError } from '@/lib/api'
 import { getAnalyticsOverview, type AnalyticsOverview } from '@/lib/analytics-api'
-import { formatCurrency } from '@/lib/utils'
-import type { LeadStatus } from '@/types'
-
-const leadStatusColor: Record<LeadStatus, 'default' | 'secondary' | 'outline' | 'success' | 'warning' | 'destructive'> = {
-  new: 'outline',
-  contacted: 'secondary',
-  qualified: 'default',
-  proposal: 'warning',
-  negotiation: 'warning',
-  won: 'success',
-  lost: 'destructive',
-}
-
-export function AdminLeadsPage() {
-  const [filter, setFilter] = useState<string>('all')
-
-  const filtered = filter === 'all' ? adminLeads : adminLeads.filter((l) => l.status === filter)
-
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Lead Pipeline" description="Track inquiries from first touch to purchase">
-        <Button onClick={() => toast.success('Lead created (demo)')} className="gap-2"><Plus className="h-4 w-4" /> New Lead</Button>
-      </PageHeader>
-
-      <div className="flex flex-wrap gap-2">
-        {['all', 'new', 'qualified', 'proposal', 'negotiation', 'won'].map((s) => (
-          <Button key={s} size="sm" variant={filter === s ? 'default' : 'outline'} onClick={() => setFilter(s)} className="capitalize">
-            {s === 'all' ? 'All' : s}
-          </Button>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        {filtered.map((lead) => (
-          <Card key={lead.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="flex flex-col sm:flex-row sm:items-center gap-4 p-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold">{lead.customerName}</p>
-                  <Badge variant={leadStatusColor[lead.status]} className="capitalize">{lead.status}</Badge>
-                  <Badge variant="outline">{lead.source}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">{lead.interestedModel} · {lead.assignedAgent}</p>
-                {lead.notes && <p className="text-xs text-muted-foreground mt-1">{lead.notes}</p>}
-              </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <p className="font-display text-lg font-bold">{formatCurrency(lead.value)}</p>
-                <Button size="sm" variant="outline" onClick={() => toast.info('Assign agent (demo)')}>Assign</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export function AdminServiceOpsPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Service Operations" description="Daily schedules, bay management, job transfers">
-        <Button variant="outline" onClick={() => toast.info('Add manual history (demo)')}>Add History Record</Button>
-      </PageHeader>
-
-      <div className="grid sm:grid-cols-3 gap-4">
-        <StatCard label="Today's Appointments" value={serviceScheduleToday.length} icon={Calendar} />
-        <StatCard label="In Progress" value={serviceScheduleToday.filter((s) => s.status === 'in_progress').length} />
-        <StatCard label="Awaiting Approval" value={serviceScheduleToday.filter((s) => s.status === 'awaiting_approval').length} />
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle className="font-display">Daily Schedule — All Branches</CardTitle></CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-muted-foreground text-left">
-                <th className="pb-3 pr-3">Time</th>
-                <th className="pb-3 pr-3">Customer</th>
-                <th className="pb-3 pr-3">Vehicle</th>
-                <th className="pb-3 pr-3">Type</th>
-                <th className="pb-3 pr-3">Bay</th>
-                <th className="pb-3 pr-3">Branch</th>
-                <th className="pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {serviceScheduleToday.map((s) => (
-                <tr key={s.id} className="border-b border-border/40 hover:bg-muted/20">
-                  <td className="py-3 pr-3 font-mono text-xs">{s.time}</td>
-                  <td className="py-3 pr-3 font-medium">{s.customer}</td>
-                  <td className="py-3 pr-3">{s.vehicle}</td>
-                  <td className="py-3 pr-3">{s.type}</td>
-                  <td className="py-3 pr-3">{s.bay}</td>
-                  <td className="py-3 pr-3">{s.branch}</td>
-                  <td className="py-3">
-                    <Badge variant={s.status === 'awaiting_approval' ? 'warning' : 'outline'} className="capitalize text-[10px]">
-                      {s.status.replace('_', ' ')}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 export { AdminNotificationsPage } from './AdminNotificationsPage'
+export { AdminLeadsPage } from './AdminLeadsPage'
+export { AdminServiceOpsPage } from './AdminServiceOpsPage'
 
 export function AdminAnalyticsPage() {
+  const pageTitle = useAdminPageTitle()
   const [data, setData] = useState<AnalyticsOverview | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -150,7 +40,7 @@ export function AdminAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Business Intelligence" description="Live operational metrics from inventory, CRM, support, and warranty" />
+      <PageHeader title={pageTitle} description="Live operational metrics from inventory, CRM, support, and warranty" />
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">

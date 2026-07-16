@@ -13,12 +13,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        // Backend is published by docker-compose on host port 8002 (8002->8000).
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/media': {
-        target: 'http://localhost:8002',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },

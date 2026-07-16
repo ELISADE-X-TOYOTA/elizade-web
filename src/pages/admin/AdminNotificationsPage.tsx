@@ -23,6 +23,7 @@ import {
   type NotificationRule,
 } from '@/lib/notifications-api'
 import { cn } from '@/lib/utils'
+import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
 const NOTIFICATION_CHANNELS = ['in_app', 'email', 'push'] as const
 
@@ -137,6 +138,7 @@ function ChannelPicker({
 }
 
 export function AdminNotificationsPage() {
+  const pageTitle = useAdminPageTitle()
   const [rules, setRules] = useState<NotificationRule[]>([])
   const [campaigns, setCampaigns] = useState<BroadcastCampaign[]>([])
   const [loading, setLoading] = useState(true)
@@ -363,7 +365,7 @@ export function AdminNotificationsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-bold text-[#121a2a] dark:text-white">Notifications</h1>
+          <h1 className="font-display text-2xl font-bold text-[#121a2a] dark:text-white">{pageTitle}</h1>
           <p className="text-sm text-muted-foreground">Rules, broadcasts, and delivery channels for Elizade Connect.</p>
         </div>
         <div className="flex flex-wrap gap-2">

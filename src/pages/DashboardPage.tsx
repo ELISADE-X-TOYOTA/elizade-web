@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   Car,
   Wrench,
@@ -21,14 +22,16 @@ import { SafeImage } from '@/components/ui/safe-image'
 import { useAuth } from '@/context/AuthContext'
 import {
   ownedVehicles,
-  serviceAppointments,
   notifications,
   recallNotices,
-  activeServiceJob,
   warrantyCertificates,
-  getBranchById,
-  getOwnedVehicleById,
 } from '@/data/dummy'
+import {
+  getServiceTrack,
+  listMyServiceAppointments,
+  type CustomerAppointment,
+  type ServiceTrackPayload,
+} from '@/lib/service-api'
 import { cn, formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 
 function getGreeting() {
@@ -156,10 +159,45 @@ function ActivityIcon({ item }: { item: ActivityItem }) {
 export function DashboardPage() {
   const { user } = useAuth()
   const firstName = user?.firstName ?? 'there'
+  const [apiAppointments, setApiAppointments] = useState<CustomerAppointment[]>([])
+  const [liveTrack, setLiveTrack] = useState<ServiceTrackPayload | null>(null)
+
+  useEffect(() => {
+    listMyServiceAppointments()
+      .then(async (rows) => {
+        setApiAppointments(rows)
+        const active = rows.find(
+          (a) =>
+            a.pendingAdditionalWork ||
+            a.status === 'in_progress' ||
+            a.status === 'awaiting_approval',
+        )
+        if (active?.jobId) {
+          try {
+            setLiveTrack(await getServiceTrack(active.id))
+          } catch {
+            setLiveTrack(null)
+          }
+        } else {
+          setLiveTrack(null)
+        }
+      })
+      .catch(() => {
+        setApiAppointments([])
+        setLiveTrack(null)
+      })
+  }, [])
 
   const primaryVehicle = ownedVehicles.find((v) => v.isPrimary)
-  const liveAppointment = serviceAppointments.find((a) => a.status === 'awaiting_approval')
-  const upcomingAppointment = serviceAppointments.find((a) => a.status === 'confirmed')
+  const liveAppointment = apiAppointments.find(
+    (a) =>
+      a.pendingAdditionalWork ||
+      a.status === 'in_progress' ||
+      a.status === 'awaiting_approval',
+  )
+  const upcomingAppointment = apiAppointments.find((a) => a.status === 'confirmed')
+  const activeServiceJob = liveTrack?.job ?? null
+  const pendingExtraWork = activeServiceJob?.additionalWork.find((w) => w.status === 'pending_approval')
   const activeRecall = recallNotices.find((r) => r.affected)
   const activeWarranty = warrantyCertificates.find((w) => w.vehicleId === primaryVehicle?.id && w.status === 'active')
   const unreadCount = notifications.filter((n) => !n.isRead).length
@@ -170,19 +208,21 @@ export function DashboardPage() {
   const daysToService = primaryVehicle ? daysUntil(primaryVehicle.nextServiceDue) : 0
   const kmRemaining = primaryVehicle ? primaryVehicle.nextServiceMileage - primaryVehicle.mileage : 0
 
-  const completedStages = activeServiceJob.stages.filter((s) => s.completed).length
-  const jobProgress = Math.round((completedStages / activeServiceJob.stages.length) * 100)
+  const completedStages = activeServiceJob?.stages.filter((s) => s.completed).length ?? 0
+  const jobProgress = activeServiceJob?.stages.length
+    ? Math.round((completedStages / activeServiceJob.stages.length) * 100)
+    : 0
 
   const attentionCount =
-    (liveAppointment ? 1 : 0) + (activeRecall ? 1 : 0) + unreadCount
+    (pendingExtraWork ? 1 : 0) + (activeRecall ? 1 : 0) + unreadCount
 
   const activityFeed: ActivityItem[] = [
-  ...(liveAppointment && activeServiceJob.additionalWork
+  ...(liveAppointment && pendingExtraWork
     ? [{
         id: 'live-job',
-        time: notifications[0]?.createdAt ?? new Date().toISOString(),
+        time: pendingExtraWork.createdAt,
         title: 'Approval needed — additional work',
-        body: activeServiceJob.additionalWork.description,
+        body: pendingExtraWork.description,
         link: `/service/track/${liveAppointment.id}`,
         live: true,
         kind: 'service' as const,
@@ -261,7 +301,7 @@ export function DashboardPage() {
             </div>
 
             <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
-              {liveAppointment && activeServiceJob.additionalWork && (
+              {liveAppointment && pendingExtraWork && (
                 <Link
                   to={`/service/track/${liveAppointment.id}`}
                   className="group relative flex gap-3 rounded-xl border border-border bg-background dark:bg-[#0f141c] p-4 transition-all hover:shadow-md dark:hover:shadow-black/30 hover:border-blue-500/30 dark:hover:border-blue-400/25 overflow-hidden"
@@ -276,7 +316,7 @@ export function DashboardPage() {
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Additional work pending</p>
                     <p className="text-sm font-bold tabular-nums mt-2 text-foreground">
-                      {formatCurrency(activeServiceJob.additionalWork.cost)}
+                      {formatCurrency(Number(pendingExtraWork.cost))}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground shrink-0 self-center transition-colors" />
@@ -334,7 +374,7 @@ export function DashboardPage() {
       )}
 
       {/* Live service tracker */}
-      {liveAppointment && (
+      {liveAppointment && activeServiceJob && (
         <FadeIn delay={0.05}>
           <Card className="border-border shadow-md dark:shadow-black/25 overflow-hidden bg-card">
             <div
@@ -356,14 +396,15 @@ export function DashboardPage() {
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1 truncate">
-                      {getOwnedVehicleById(liveAppointment.vehicleId)?.model} ·{' '}
-                      {getBranchById(liveAppointment.branchId)?.name}
+                      {liveAppointment.vehicleLabel} · {liveAppointment.branchName}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 rounded-xl border border-border/80 bg-background/80 dark:bg-[#0f141c] px-3 py-2 text-sm text-muted-foreground shrink-0">
                   <Clock className="h-4 w-4 text-primary shrink-0" />
-                  <span className="tabular-nums">Est. {formatDateTime(activeServiceJob.estimatedCompletion)}</span>
+                  <span className="tabular-nums">
+                    Est. {activeServiceJob.estimatedCompletion ? formatDateTime(activeServiceJob.estimatedCompletion) : 'TBC'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -397,7 +438,7 @@ export function DashboardPage() {
                     const isPending = !stage.completed && !isCurrent
                     return (
                       <div
-                        key={stage.label}
+                        key={stage.id}
                         className="flex flex-col items-center gap-2 z-10 flex-1 min-w-[64px] max-w-[88px]"
                       >
                         {stage.completed ? (
@@ -433,10 +474,10 @@ export function DashboardPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between pt-2 border-t border-border/50">
-                {activeServiceJob.additionalWork && (
+                {pendingExtraWork && (
                   <p className="text-xs text-muted-foreground max-w-md">
                     <span className="font-medium text-foreground">Action needed:</span>{' '}
-                    Approve {formatCurrency(activeServiceJob.additionalWork.cost)} additional work
+                    Approve {formatCurrency(Number(pendingExtraWork.cost))} additional work
                   </p>
                 )}
                 <Link to={`/service/track/${liveAppointment.id}`} className="shrink-0">
@@ -635,10 +676,10 @@ export function DashboardPage() {
                   <Badge variant="success" className="text-[10px]">Confirmed</Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {formatDateTime(upcomingAppointment.scheduledAt)} · {getBranchById(upcomingAppointment.branchId)?.name}
+                  {formatDateTime(upcomingAppointment.scheduledAt)} · {upcomingAppointment.branchName}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                  {upcomingAppointment.issueDescription}
+                  {upcomingAppointment.vehicleLabel}
                 </p>
               </div>
               <Link to={`/service/track/${upcomingAppointment.id}`} className="shrink-0">

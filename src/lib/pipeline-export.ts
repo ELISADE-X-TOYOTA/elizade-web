@@ -1,6 +1,5 @@
 import type { LeadListItem, LeadPipeline } from '@/lib/leads-api'
 import { downloadCsv, rowsToCsv } from '@/lib/csv-export'
-import { formatCurrency } from '@/lib/utils'
 
 const STAGE_ORDER = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost'] as const
 

@@ -1,5 +1,4 @@
 import { SafeImage } from '@/components/ui/safe-image'
-import { BrandMark } from '@/components/branding/BrandMark'
 import { AUTH_HERO_IMAGE } from '@/lib/images'
 
 export function AuthBrandPanel() {

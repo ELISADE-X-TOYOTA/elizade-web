@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import {
+  KeyRound,
   LayoutDashboard,
   Car,
   Users,
@@ -31,6 +32,7 @@ const baseNavItems = [
   { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
   { to: '/admin/inventory', label: 'Inventory', icon: Car },
   { to: '/admin/customers', label: 'Customers', icon: Users },
+  { to: '/admin/ownership', label: 'Ownership', icon: KeyRound },
   { to: '/admin/leads', label: 'Leads', icon: Target },
   { to: '/admin/service', label: 'Service Ops', icon: Wrench },
   { to: '/admin/warranty', label: 'Warranty', icon: Shield },

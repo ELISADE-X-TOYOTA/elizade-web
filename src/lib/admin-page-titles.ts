@@ -4,6 +4,7 @@ export const ADMIN_PAGE_TITLES: Record<string, string> = {
   '/admin/dashboard': 'Operations overview',
   '/admin/inventory': 'Vehicle inventory',
   '/admin/customers': 'Customer CRM',
+  '/admin/ownership': 'Vehicle ownership claims',
   '/admin/leads': 'Lead pipeline',
   '/admin/leads/breakdown': 'Pipeline breakdown',
   '/admin/service': 'Service operations',

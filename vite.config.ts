@@ -13,11 +13,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'https://elizade-backend-api-production.up.railway.app',
         changeOrigin: true,
       },
       '/media': {
-        target: 'http://localhost:8000',
+        target: 'https://elizade-backend-api-production.up.railway.app',
         changeOrigin: true,
       },
     },

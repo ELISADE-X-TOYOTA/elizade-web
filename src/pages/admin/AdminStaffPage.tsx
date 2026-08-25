@@ -922,8 +922,8 @@ export function AdminStaffPage() {
             <TabsContent value="overview" className="space-y-5 mt-0">
               <div className="grid sm:grid-cols-2 gap-3">
                 {[
-                  { icon: Mail, label: 'Email (OTP login)', value: selected.email ?? '—' },
-                  { icon: Mail, label: 'Work email', value: selected.email },
+                  { icon: Mail, label: 'Email (OTP login)', value: selected.email ?? '—', mono: true },
+                  { icon: Mail, label: 'Work email', value: selected.email, mono: true },
                   { icon: MapPin, label: 'Location', value: `${selected.city}, ${selected.state}` },
                   { icon: Calendar, label: 'Joined', value: formatDateTime(selected.createdAt) },
                 ].map((row) => (

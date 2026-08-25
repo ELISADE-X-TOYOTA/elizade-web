@@ -16,6 +16,9 @@ const AdminInventoryPage = lazy(() =>
 const AdminCustomersPage = lazy(() =>
   import('@/pages/admin/AdminCustomersPage').then((m) => ({ default: m.AdminCustomersPage })),
 )
+const AdminOwnershipPage = lazy(() =>
+  import('@/pages/admin/AdminOwnershipPage').then((m) => ({ default: m.AdminOwnershipPage })),
+)
 const AdminLeadsPage = lazy(() =>
   import('@/pages/admin/AdminLeadsPage').then((m) => ({ default: m.AdminLeadsPage })),
 )
@@ -84,6 +87,7 @@ export default function App() {
             <Route path="/admin/dashboard" element={<AdminShell><AdminDashboardPage /></AdminShell>} />
             <Route path="/admin/inventory" element={<AdminShell><AdminInventoryPage /></AdminShell>} />
             <Route path="/admin/customers" element={<AdminShell><AdminCustomersPage /></AdminShell>} />
+            <Route path="/admin/ownership" element={<AdminShell><AdminOwnershipPage /></AdminShell>} />
             <Route path="/admin/leads" element={<AdminShell><AdminLeadsPage /></AdminShell>} />
             <Route path="/admin/leads/breakdown" element={<AdminShell><AdminPipelineBreakdownPage /></AdminShell>} />
             <Route path="/admin/service" element={<AdminShell><AdminServiceOpsPage /></AdminShell>} />

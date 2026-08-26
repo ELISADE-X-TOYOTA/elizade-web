@@ -9,6 +9,7 @@ export interface StaffMember {
   department: string
   city: string
   state: string
+  role?: 'staff' | 'admin'
   isActive: boolean
   isVerified: boolean
   createdAt: string

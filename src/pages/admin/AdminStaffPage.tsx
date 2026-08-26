@@ -56,10 +56,11 @@ import {
 import { cn, formatDateTime } from '@/lib/utils'
 import { useAdminPageTitle } from '@/lib/admin-page-titles'
 
-const DEPARTMENTS = ['Sales', 'Service', 'Warranty', 'Support', 'Operations'] as const
+const DEPARTMENTS = ['Management', 'Sales', 'Service', 'Warranty', 'Support', 'Operations'] as const
 const NIGERIAN_STATES = ['Lagos', 'Abuja', 'Rivers', 'Oyo', 'Kano', 'Delta', 'Edo', 'Ogun', 'Kaduna', 'Enugu']
 
 const DEPT_CHART_COLORS: Record<string, string> = {
+  Management: '#6366f1',
   Sales: '#8b5cf6',
   Service: '#10b981',
   Warranty: '#f59e0b',
@@ -68,6 +69,11 @@ const DEPT_CHART_COLORS: Record<string, string> = {
 }
 
 const DEPT_STYLES: Record<string, { pill: string; dot: string; soft: string }> = {
+  Management: {
+    pill: 'bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/20',
+    dot: 'bg-indigo-500',
+    soft: 'from-indigo-500/25 via-indigo-500/10 to-transparent',
+  },
   Sales: {
     pill: 'bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/20',
     dot: 'bg-violet-500',
@@ -155,6 +161,15 @@ function DeptPill({ department }: { department: string }) {
     <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold', s.pill)}>
       {department}
     </span>
+  )
+}
+
+function RolePill({ role = 'staff' }: { role?: StaffMember['role'] }) {
+  return (
+    <Badge variant={role === 'admin' ? 'default' : 'outline'} className="gap-1 text-[10px] capitalize">
+      {role === 'admin' ? <Shield className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+      {role}
+    </Badge>
   )
 }
 
@@ -682,6 +697,7 @@ export function AdminStaffPage() {
                     <p className="font-semibold">{staffName(member)}</p>
                     <p className="truncate text-xs text-muted-foreground">{member.email}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
+                      <RolePill role={member.role} />
                       <DeptPill department={member.department} />
                       <StatusPill active={member.isActive} />
                     </div>
@@ -743,6 +759,7 @@ export function AdminStaffPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-1">
+                        <RolePill role={member.role} />
                         <StatusPill active={member.isActive} />
                         {member.isVerified ? (
                           <Badge variant="outline" className="gap-1 text-[10px]">

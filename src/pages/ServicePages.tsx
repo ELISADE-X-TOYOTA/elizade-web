@@ -20,6 +20,8 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FadeIn } from '@/components/effects/PageTransition'
+import { apiFetch } from '@/lib/api'
+import { apiFetch } from '@/lib/api'
 import {
   branches,
   ownedVehicles,
@@ -163,6 +165,13 @@ export function ServicePage() {
 
 export function ServiceBookPage() {
   const [vehicleId, setVehicleId] = useState(ownedVehicles[0].id)
+  const [recallBookingEnabled, setRecallBookingEnabled] = useState(true)
+
+  useEffect(() => {
+    apiFetch<{ recallBookingEnabled: boolean }>('/service/offerings', {}, false)
+      .then((offering) => setRecallBookingEnabled(offering.recallBookingEnabled))
+      .catch(() => setRecallBookingEnabled(true))
+  }, [])
 
   const handleBook = () => toast.success('Service appointment booked!')
 
@@ -191,7 +200,7 @@ export function ServiceBookPage() {
               <option value="periodic">Periodic Maintenance</option>
               <option value="repair">Repair</option>
               <option value="inspection">Inspection</option>
-              <option value="recall">Recall Service</option>
+              {recallBookingEnabled && <option value="recall">Recall Service</option>}
             </select>
           </div>
           <div className="space-y-2">

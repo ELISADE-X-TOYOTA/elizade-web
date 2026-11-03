@@ -108,6 +108,21 @@ export function createWarrantyCertificate(body: {
   })
 }
 
+export interface ServiceOffering {
+  recallBookingEnabled: boolean
+}
+
+export function getServiceOffering(): Promise<ServiceOffering> {
+  return apiFetch('/admin/service/offerings')
+}
+
+export function updateServiceOffering(recallBookingEnabled: boolean): Promise<ServiceOffering> {
+  return apiFetch('/admin/service/offerings', {
+    method: 'PATCH',
+    body: JSON.stringify({ recallBookingEnabled }),
+  })
+}
+
 export function listRecallCampaigns(): Promise<RecallCampaign[]> {
   return apiFetch('/admin/warranty/recalls')
 }

@@ -14,12 +14,14 @@ import {
   ShieldAlert,
   UserCheck,
 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { Drawer, DrawerSection } from '@/components/ui/drawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ApiError } from '@/lib/api'
@@ -28,10 +30,12 @@ import {
   createWarrantyCertificate,
   getWarrantySummary,
   listOwnedVehicleOptions,
+  getServiceOffering,
   listRecallCampaigns,
   listWarrantyCertificates,
   listWarrantyClaims,
   notifyRecallCampaign,
+  updateServiceOffering,
   updateWarrantyClaim,
   type OwnedVehicleOption,
   type RecallCampaign,
@@ -99,6 +103,9 @@ function StatHighlight({
 
 export function AdminWarrantyPage() {
   const pageTitle = useAdminPageTitle()
+  const { isAdmin } = useAuth()
+  const [recallBookingEnabled, setRecallBookingEnabled] = useState(true)
+  const [savingRecallSwitch, setSavingRecallSwitch] = useState(false)
   const [summary, setSummary] = useState<WarrantySummary | null>(null)
   const [claims, setClaims] = useState<WarrantyClaim[]>([])
   const [claimsTotal, setClaimsTotal] = useState(0)
@@ -137,13 +144,15 @@ export function AdminWarrantyPage() {
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [summaryRes, claimRes, recallRows, certRows, assigneeRows] = await Promise.all([
+      const [summaryRes, claimRes, recallRows, certRows, assigneeRows, offering] = await Promise.all([
         getWarrantySummary(),
         listWarrantyClaims(claimFilter, 1, 50),
         listRecallCampaigns(),
         listWarrantyCertificates(),
         listSupportAssignees(),
+        getServiceOffering().catch(() => ({ recallBookingEnabled: true })),
       ])
+      setRecallBookingEnabled(offering.recallBookingEnabled)
       setSummary(summaryRes)
       setClaims(claimRes.items)
       setClaimsTotal(claimRes.total)
@@ -295,6 +304,39 @@ export function AdminWarrantyPage() {
           </Button>
         </div>
       </PageHeader>
+
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div>
+            <p className="font-medium">Recall service booking</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {recallBookingEnabled
+                ? 'Customers can book a recall service in the app.'
+                : 'Recall service is hidden from the booking screen.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {savingRecallSwitch && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <Switch
+              checked={recallBookingEnabled}
+              disabled={!isAdmin || savingRecallSwitch}
+              aria-label="Enable recall service booking"
+              onCheckedChange={(checked) => {
+                const previous = recallBookingEnabled
+                setRecallBookingEnabled(checked)
+                setSavingRecallSwitch(true)
+                updateServiceOffering(checked)
+                  .then((offering) => setRecallBookingEnabled(offering.recallBookingEnabled))
+                  .catch((err) => {
+                    setRecallBookingEnabled(previous)
+                    toast.error(err instanceof ApiError ? err.message : 'Failed to update recall service')
+                  })
+                  .finally(() => setSavingRecallSwitch(false))
+              }}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatHighlight

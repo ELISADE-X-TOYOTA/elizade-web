@@ -21,7 +21,6 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FadeIn } from '@/components/effects/PageTransition'
 import { apiFetch } from '@/lib/api'
-import { apiFetch } from '@/lib/api'
 import {
   branches,
   ownedVehicles,
